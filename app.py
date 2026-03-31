@@ -1,7 +1,10 @@
 import streamlit as st
 from sqlalchemy import text
 
-# Conexão direta e simples
+st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
+
+# Conexão automática usando os campos do Secret (Dicionário)
+# O Streamlit vai ler host, port, user, password individualmente agora
 conn = st.connection("postgresql", type="sql")
 
 def init_db():
@@ -20,9 +23,11 @@ def init_db():
                 );
             """))
             s.commit()
+            # st.success("Conectado ao Supabase com sucesso!") # Opcional: remover após testar
     except Exception as e:
-        st.error(f"Erro ao inicializar banco: {e}")
+        st.error(f"Erro de Conexão: O banco de dados recusou o acesso. Verifique a senha nos Secrets. Detalhes: {e}")
 
+init_db()
 init_db()
 # Função de carregar dados protegida
 def load_data(gid):
