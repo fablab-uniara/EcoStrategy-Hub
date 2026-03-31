@@ -5,19 +5,19 @@ import plotly.graph_objects as go
 import json
 from supabase import create_client, Client
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="EcoStrategy Hub - Professional", layout="wide")
+# --- CONFIGURAÇÃO ---
+st.set_page_config(page_title="EcoStrategy Hub - Acadêmico", layout="wide")
 
-# --- CONEXÃO SUPABASE ---
+# --- CONEXÃO ---
 try:
     URL: str = st.secrets["SUPABASE_URL"]
     KEY: str = st.secrets["SUPABASE_KEY"]
     supabase: Client = create_client(URL, KEY)
 except:
-    st.error("Erro Crítico: Chaves do Supabase não encontradas.")
+    st.error("Erro nas chaves do Supabase.")
     st.stop()
 
-# --- FUNÇÕES DE SEGURANÇA (O SEGREDO PARA NÃO DAR ERRO) ---
+# --- FUNÇÕES DE SEGURANÇA ---
 def safe_float(val, default=0.0):
     if val is None: return default
     try: return float(val)
@@ -26,15 +26,11 @@ def safe_float(val, default=0.0):
 def safe_json(val):
     if val is None or val == "": return {}
     if isinstance(val, dict): return val
-    try:
-        # Se for string, tenta carregar o JSON
-        return json.loads(val)
-    except:
-        return {}
+    try: return json.loads(val)
+    except: return {}
 
 def save_data(gid, column, value):
-    if isinstance(value, (dict, list)): 
-        value = json.dumps(value)
+    if isinstance(value, (dict, list)): value = json.dumps(value)
     supabase.table("eco_data").upsert({"group_id": gid, column: str(value)}).execute()
 
 def load_data(gid):
@@ -42,14 +38,12 @@ def load_data(gid):
         res = supabase.table("eco_data").select("*").eq("group_id", gid).execute()
         if res.data:
             row = res.data[0]
-            # Proteção: Transforma campos NULL em dicionários vazios
             row['porter'] = safe_json(row.get('porter'))
             row['dre'] = safe_json(row.get('dre'))
             row['wacc'] = safe_json(row.get('wacc'))
             return row
-        return {'group_id': gid, 'participants': '', 'company_info': '', 'company_desc': '', 'diary': '', 'porter': {}, 'hhi': '0', 'dre': {}, 'wacc': {}}
-    except:
-        return {}
+        return {'group_id': gid, 'porter': {}, 'dre': {}, 'wacc': {}, 'hhi': '0'}
+    except: return {}
 
 # --- LOGIN ---
 if 'auth' not in st.session_state: st.session_state.auth = False
@@ -61,25 +55,35 @@ if not st.session_state.auth:
         st.rerun()
     st.stop()
 
-# CARREGAR DADOS COM PROTEÇÃO
 data = load_data(st.session_state.group)
 
-# --- SIDEBAR ---
+# --- SIDEBAR (Ajuste Global de Selic) ---
 with st.sidebar:
     st.title(f"📊 {st.session_state.group}")
-    menu = st.radio("NAVEGAÇÃO", ["Dashboard", "Caracterização", "Micro (Porter/HHI)", "Macro (DRE/Stress)", "Financeiro (EVA)", "Relatório"])
-
-# --- 1. DASHBOARD DE RISCOS ---
-if menu == "Dashboard":
-    st.title("🚦 Dashboard de Riscos Inteligente")
+    st.header("⚙️ Variáveis Macro")
+    # AQUI VOCÊ AJUSTA A SELIC QUE IMPACTA TODO O APP
+    selic_global = st.number_input("Taxa Selic Vigente (%)", value=10.75, step=0.25, help="Defina aqui a Selic atual para os cálculos de Stress Test e Custo de Oportunidade.")
     
-    # Extração segura de dados
+    menu = st.radio("NAVEGAÇÃO", ["Dashboard", "Identificação", "Estratégia (Micro)", "Monetário (Macro)", "Financeiro (EVA)", "Relatório"])
+    st.divider()
+    st.caption("Foco Acadêmico - Economia")
+
+# --- 1. DASHBOARD ---
+if menu == "Dashboard":
+    st.title("🚦 Dashboard de Riscos e Insights")
+    
+    with st.expander("🎓 Entenda os Semáforos (Teoria)"):
+        st.write("""
+        - **Risco de Crédito:** Avalia se a geração de caixa (EBITDA) é suficiente para cobrir os juros da dívida. Se a Selic ultrapassar o ponto de ruptura, a empresa entra em insolvência financeira.
+        - **Risco de Mercado (HHI):** Mede a concentração do setor. Mercados muito concentrados permitem maior poder de preço (Pricing Power).
+        - **Criação de Valor (EVA):** Indica se o retorno (ROI) supera o custo de capital. Se for negativo, a empresa está 'destruindo riqueza'.
+        """)
+
     dre = data.get('dre', {})
     rec = safe_float(dre.get('receita'))
     cus = safe_float(dre.get('custos'))
     div = safe_float(dre.get('divida'))
     ebitda = rec - cus
-    selic_atual = 10.75
     break_even = (ebitda / div * 100) if div > 0 else 0
 
     hhi_val = 0
@@ -90,56 +94,55 @@ if menu == "Dashboard":
     roi = safe_float(wacc_obj.get('roi'))
     w_val = safe_float(wacc_obj.get('wacc_final', 15.0))
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.subheader("Risco de Crédito")
-        st_c = "status-green" if selic_atual < break_even else "status-red" if break_even > 0 else "status-yellow"
-        color = "#28a745" if st_c == "status-green" else "#dc3545" if st_c == "status-red" else "#ffc107"
-        st.markdown(f'<div style="background:{color};padding:15px;border-radius:8px;color:white;text-align:center;font-weight:bold">SELIC: {selic_atual}%<br>Ruptura: {break_even:.1f}%</div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        color = "#28a745" if selic_global < break_even else "#dc3545" if break_even > 0 else "#6c757d"
+        st.markdown(f'<div style="background:{color};padding:15px;border-radius:8px;color:white;text-align:center"><b>RISCO CRÉDITO</b><br>Ruptura: {break_even:.1f}%</div>', unsafe_allow_html=True)
+    with c2:
+        m_color = "#28a745" if hhi_val < 1500 else "#ffc107" if hhi_val < 2500 else "#dc3545"
+        st.markdown(f'<div style="background:{m_color};padding:15px;border-radius:8px;color:white;text-align:center"><b>RISCO MERCADO</b><br>HHI: {int(hhi_val)}</div>', unsafe_allow_html=True)
+    with c3:
+        v_color = "#28a745" if roi > w_val else "#dc3545"
+        st.markdown(f'<div style="background:{v_color};padding:15px;border-radius:8px;color:white;text-align:center"><b>VALOR (EVA)</b><br>ROI: {roi}%</div>', unsafe_allow_html=True)
 
-    with col2:
-        st.subheader("Risco de Mercado")
-        st_m = "#28a745" if hhi_val < 1500 else "#ffc107" if hhi_val < 2500 else "#dc3545"
-        st.markdown(f'<div style="background:{st_m};padding:15px;border-radius:8px;color:white;text-align:center;font-weight:bold">HHI: {int(hhi_val)}</div>', unsafe_allow_html=True)
-
-    with col3:
-        st.subheader("Criação de Valor")
-        st_v = "#28a745" if roi > w_val else "#dc3545"
-        st.markdown(f'<div style="background:{st_v};padding:15px;border-radius:8px;color:white;text-align:center;font-weight:bold">ROI: {roi}%<br>WACC: {w_val:.1f}%</div>', unsafe_allow_html=True)
-
-# --- 2. CARACTERIZAÇÃO ---
-elif menu == "Caracterização":
+# --- 2. IDENTIFICAÇÃO ---
+elif menu == "Identificação":
     st.title("👥 Identificação do Projeto")
-    with st.form("f_car"):
-        membros = st.text_area("Membros", value=data.get('participants', ''))
-        empresa = st.text_input("Empresa", value=data.get('company_info', ''))
-        desc = st.text_area("Descrição", value=data.get('company_desc', ''))
+    with st.form("f_id"):
+        membros = st.text_area("Integrantes do Grupo", value=data.get('participants', ''))
+        empresa = st.text_input("Empresa Analisada", value=data.get('company_info', ''))
         if st.form_submit_button("Salvar Identificação"):
             save_data(st.session_state.group, "participants", membros)
             save_data(st.session_state.group, "company_info", empresa)
-            save_data(st.session_state.group, "company_desc", desc)
-            st.success("Salvo!")
-            st.rerun()
-    
-    st.subheader("Diário de Bordo")
-    notas = st.text_area("Notas da Visita", value=data.get('diary', ''), height=200)
-    if st.button("Salvar Diário"):
-        save_data(st.session_state.group, "diary", notas)
-        st.success("Diário salvo!")
+            st.success("Identificação salva!")
 
-# --- 3. MICRO (PORTER/HHI) ---
-elif menu == "Micro (Porter/HHI)":
+# --- 3. MICRO (STRATEGY) ---
+elif menu == "Estratégia (Micro)":
     st.title("🔬 Análise Microeconômica")
-    tab1, tab2 = st.tabs(["Matriz de Porter", "HHI"])
     
+    with st.expander("🎓 O que é a Matriz de Porter?"):
+        st.write("""
+        Desenvolvida por Michael Porter, avalia as 5 forças que determinam a atratividade de um setor. 
+        Quanto mais fortes as forças, menor a rentabilidade média das empresas no longo prazo.
+        """)
+        
+    with st.expander("🎓 O que é o Índice HHI?"):
+        st.write("""
+        O **Herfindahl-Hirschman Index** mede a concentração de mercado. 
+        - **Abaixo de 1500:** Mercado competitivo.
+        - **1500 a 2500:** Concentração moderada.
+        - **Acima de 2500:** Mercado altamente concentrado (Oligopólio/Monopólio).
+        """)
+
+    tab1, tab2 = st.tabs(["5 Forças de Porter", "HHI"])
     with tab1:
         p = data.get('porter', {})
         c1, c2 = st.columns(2)
-        p1 = c1.slider("Novos Entrantes", 1, 5, int(p.get('p1', 3)))
-        p2 = c1.slider("Fornecedores", 1, 5, int(p.get('p2', 3)))
-        p3 = c1.slider("Clientes", 1, 5, int(p.get('p3', 3)))
-        p4 = c2.slider("Substitutos", 1, 5, int(p.get('p4', 3)))
-        p5 = c2.slider("Rivalidade", 1, 5, int(p.get('p5', 3)))
+        p1 = c1.slider("Ameaça de Novos Entrantes", 1, 5, int(p.get('p1', 3)))
+        p2 = c1.slider("Poder dos Fornecedores", 1, 5, int(p.get('p2', 3)))
+        p3 = c1.slider("Poder dos Clientes", 1, 5, int(p.get('p3', 3)))
+        p4 = c2.slider("Ameaça de Substitutos", 1, 5, int(p.get('p4', 3)))
+        p5 = c2.slider("Rivalidade entre Concorrentes", 1, 5, int(p.get('p5', 3)))
         if st.button("Salvar Porter"):
             save_data(st.session_state.group, "porter", {"p1":p1,"p2":p2,"p3":p3,"p4":p4,"p5":p5})
             st.success("Salvo!")
@@ -150,54 +153,90 @@ elif menu == "Micro (Porter/HHI)":
             try:
                 sh = [float(x.strip()) for x in h_in.split(",") if x.strip()]
                 hhi = sum([v**2 for v in sh])
-                st.metric("HHI", int(hhi))
-                st.plotly_chart(px.pie(values=sh, names=[f"E{i+1}" for i in range(len(sh))]))
-            except: st.error("Formato inválido.")
+                st.metric("HHI Calculado", int(hhi))
+                st.plotly_chart(px.pie(values=sh, names=[f"E{i+1}" for i in range(len(sh))], hole=0.4))
+                if hhi > 2500: st.warning("Alerta de Oligopólio: Alto Pricing Power.")
+            except: st.error("Erro no formato.")
         if st.button("Salvar HHI"): save_data(st.session_state.group, "hhi", h_in)
 
-# --- 4. MACRO (DRE/STRESS) ---
-elif menu == "Macro (DRE/Stress)":
-    st.title("🏦 Monetário e Stress Test")
+# --- 4. MONETÁRIO (MACRO) ---
+elif menu == "Monetário (Macro)":
+    st.title("🏦 Cenário Monetário e Transmissão de Juros")
+    
+    with st.expander("🎓 Teoria: O Canal do Custo de Capital"):
+        st.write("""
+        O aumento da Taxa Selic impacta diretamente as empresas endividadas. 
+        A análise de **Stress Test** abaixo mostra o 'Ponto de Ruptura', ou seja, a taxa de juros máxima 
+        que a empresa suporta antes de começar a ter prejuízo operacional (EBITDA < Juros).
+        """)
+
     dre = data.get('dre', {})
     c1, c2 = st.columns([1, 2])
     with c1:
-        r = st.number_input("Receita", value=safe_float(dre.get('receita', 1000000)))
-        c = st.number_input("Custos", value=safe_float(dre.get('custos', 700000)))
-        d = st.number_input("Dívida", value=safe_float(dre.get('divida', 400000)))
+        st.subheader("Dados da DRE")
+        r = st.number_input("Receita Bruta", value=safe_float(dre.get('receita', 1000000)))
+        cus = st.number_input("Custos Operacionais", value=safe_float(dre.get('custos', 700000)))
+        div = st.number_input("Dívida Bancária Total", value=safe_float(dre.get('divida', 400000)))
         if st.button("Salvar DRE"):
-            save_data(st.session_state.group, "dre", {"receita":r, "custos":c, "divida":d})
+            save_data(st.session_state.group, "dre", {"receita":r, "custos":cus, "divida":div})
             st.rerun()
-    
+
     with c2:
-        ebitda = r - c
-        selics = list(range(0, 31))
-        lucros = [ebitda - (d * s/100) for s in selics]
-        fig = px.line(x=selics, y=lucros, title="Impacto da Selic no Lucro")
+        st.subheader("Stress Test de Sensibilidade")
+        ebitda = r - cus
+        selic_test = st.slider("Simular Selic (%)", 0.0, 25.0, selic_global)
+        custo_juros = div * (selic_test/100)
+        lucro_est = ebitda - custo_juros
+        
+        st.metric("Lucro Estimado", f"R$ {lucro_est:,.2f}", delta=f"- R$ {custo_juros:,.2f} em juros")
+        
+        # Gráfico de Ruptura
+        ss = list(range(0, 31))
+        ls = [ebitda - (div * s/100) for s in ss]
+        fig = px.line(x=ss, y=ls, title="Sensibilidade: Lucro vs Selic", labels={'x':'Selic %', 'y':'Lucro'})
         fig.add_hline(y=0, line_dash="dash", line_color="red")
         st.plotly_chart(fig)
 
 # --- 5. FINANCEIRO (EVA) ---
 elif menu == "Financeiro (EVA)":
-    st.title("💰 Financeiro")
+    st.title("💰 Viabilidade Econômica")
+    
+    with st.expander("🎓 O que é WACC e EVA?"):
+        st.write("""
+        - **WACC (Weighted Average Cost of Capital):** É o custo médio ponderado de capital. Representa o retorno mínimo que a empresa deve gerar para satisfazer sócios e credores.
+        - **EVA (Economic Value Added):** É o lucro econômico real. Se o ROI (Retorno sobre Investimento) for maior que o custo de capital, a empresa cria valor.
+        """)
+
     w = data.get('wacc', {})
     c1, c2 = st.columns(2)
     with c1:
-        ke = st.number_input("Ke %", value=safe_float(w.get('ke', 15)))
-        kd = st.number_input("Kd %", value=safe_float(w.get('kd', 12)))
-        eq = st.slider("Equity %", 0, 100, int(safe_float(w.get('eq_ratio', 60)))) / 100
-        wacc = (eq * ke/100) + ((1-eq) * kd/100 * 0.66)
-        st.metric("WACC", f"{wacc*100:.2f}%")
+        st.subheader("Cálculo do WACC")
+        ke = st.number_input("Custo Cap. Próprio (Ke %)", value=safe_float(w.get('ke', 15)))
+        kd = st.number_input("Custo da Dívida (Kd %)", value=safe_float(w.get('kd', 12)))
+        eq = st.slider("Participação Cap. Próprio (%)", 0, 100, int(safe_float(w.get('eq_ratio', 60)))) / 100
+        wacc = (eq * ke/100) + ((1-eq) * kd/100 * 0.66) # 0.66 considera benefício fiscal
+        st.metric("WACC Final", f"{wacc*100:.2f}%")
         
     with c2:
-        roi = st.number_input("ROI %", value=safe_float(w.get('roi', 18)))
-        eva = roi - (wacc*100 + 5)
-        st.metric("EVA", f"{eva:.2f}%")
+        st.subheader("Geração de Valor")
+        roi = st.number_input("ROI Atual da Empresa (%)", value=safe_float(w.get('roi', 18)))
+        # EVA considerando um prêmio de risco sobre a Selic Global definida na Sidebar
+        custo_oportunidade = selic_global + 5.0
+        eva = roi - custo_oportunidade
+        
+        st.metric("EVA (ROI vs Selic+Risk)", f"{eva:.2f}%", help="Compara o ROI com a Selic + prêmio de risco de 5%.")
+        
+        if eva > 0: st.success("Criação de Valor Detectada.")
+        else: st.error("Destruição de Valor: O ROI não cobre o custo de oportunidade.")
+        
         if st.button("Salvar Financeiro"):
             save_data(st.session_state.group, "wacc", {"ke":ke, "kd":kd, "eq_ratio":eq*100, "roi":roi, "wacc_final":wacc*100})
 
 # --- 6. RELATÓRIO ---
 elif menu == "Relatório":
-    st.title("📄 Relatório")
+    st.title("📄 Relatório de Consultoria")
     st.write(f"**Empresa:** {data.get('company_info')}")
-    st.write(f"**Membros:** {data.get('participants')}")
-    st.write(f"**Diário:** {data.get('diary')}")
+    st.write(f"**Selic de Referência:** {selic_global}%")
+    st.divider()
+    st.write("Sumário Executivo:")
+    st.info(data.get('diary', 'Nenhuma nota de campo.'))
