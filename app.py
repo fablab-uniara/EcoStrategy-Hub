@@ -1,37 +1,50 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from sqlalchemy import text # Importante para o banco de dados
+from sqlalchemy import text
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
 
-# --- CONEXÃO COM BANCO DE DADOS (SUPABASE) ---
-# O Streamlit busca automaticamente a URL que você colou nos Secrets
-try:
-     conn = st.connection("postgresql", type="sql", ttl="10m")
-except Exception as e:
-    st.error(f"Erro de Conexão: {str(e)}") # Agora ele vai mostrar o erro real na tela
-    st.stop()
-# Função para criar a tabela se não existir (Rodar apenas uma vez)
+# --- CONEXÃO ROBUSTA ---
+def get_connection():
+    try:
+        # Tenta conectar com um timeout curto para não travar o app
+        return st.connection("postgresql", type="sql", ttl="0")
+    except Exception as e:
+        st.error(f"⚠️ Erro Crítico de Conexão: {e}")
+        return None
+
+conn = get_connection()
+
 def init_db():
-    with conn.session as s:
-        s.execute(text("""
-            CREATE TABLE IF NOT EXISTS eco_data (
-                group_id TEXT PRIMARY KEY, 
-                participants TEXT, 
-                company_info TEXT, 
-                diary TEXT, 
-                porter TEXT, 
-                hhi TEXT, 
-                dre TEXT, 
-                wacc TEXT
-            );
-        """))
-        s.commit()
+    if conn is not None:
+        try:
+            with conn.session as s:
+                s.execute(text("""
+                    CREATE TABLE IF NOT EXISTS eco_data (
+                        group_id TEXT PRIMARY KEY, 
+                        participants TEXT, 
+                        company_info TEXT, 
+                        diary TEXT, 
+                        porter TEXT, 
+                        hhi TEXT, 
+                        dre TEXT, 
+                        wacc TEXT
+                    );
+                """))
+                s.commit()
+        except Exception as e:
+            st.warning(f"Aviso: Tabela não pôde ser verificada. {e}")
 
 init_db()
+
+# Função de carregar dados protegida
+def load_data(gid):
+    if conn is None: return None
+    try:
+        with conn.session as s:
+            return s.execute(text("SELECT * FROM eco_data WHERE group_id = :gid"), {"gid": gid}).fetchone()
+    except:
+        return None
 
 # Funções de Banco de Dados
 def save_data(gid, column, value):
