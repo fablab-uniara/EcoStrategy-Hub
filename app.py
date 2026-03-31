@@ -10,11 +10,10 @@ st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
 # --- CONEXÃO COM BANCO DE DADOS (SUPABASE) ---
 # O Streamlit busca automaticamente a URL que você colou nos Secrets
 try:
-    conn = conn = st.connection("postgresql", type="sql")
+     conn = st.connection("postgresql", type="sql", ttl="10m")
 except Exception as e:
-    st.error("Erro na conexão com o banco de dados. Verifique os Secrets.")
+    st.error(f"Erro de Conexão: {str(e)}") # Agora ele vai mostrar o erro real na tela
     st.stop()
-
 # Função para criar a tabela se não existir (Rodar apenas uma vez)
 def init_db():
     with conn.session as s:
