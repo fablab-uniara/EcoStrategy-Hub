@@ -7,7 +7,17 @@ from supabase import create_client, Client
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="EcoStrategy Hub - Professional", layout="wide")
-
+# --- OCULTAR ELEMENTOS DO STREAMLIT (MENU, FOOTER, HEADER) ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            /* Ocultar o botão 'Manage App' que aparece apenas para o dono */
+            .stAppDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 # --- CONEXÃO SUPABASE ---
 try:
     URL: str = st.secrets["SUPABASE_URL"]
