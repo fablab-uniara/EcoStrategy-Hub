@@ -1,42 +1,29 @@
 import streamlit as st
-import pandas as pd
 from sqlalchemy import text
 
-st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
-
-# --- CONEXÃO ROBUSTA ---
-def get_connection():
-    try:
-        # Tenta conectar com um timeout curto para não travar o app
-        return st.connection("postgresql", type="sql", ttl="0")
-    except Exception as e:
-        st.error(f"⚠️ Erro Crítico de Conexão: {e}")
-        return None
-
-conn = get_connection()
+# Conexão direta e simples
+conn = st.connection("postgresql", type="sql")
 
 def init_db():
-    if conn is not None:
-        try:
-            with conn.session as s:
-                s.execute(text("""
-                    CREATE TABLE IF NOT EXISTS eco_data (
-                        group_id TEXT PRIMARY KEY, 
-                        participants TEXT, 
-                        company_info TEXT, 
-                        diary TEXT, 
-                        porter TEXT, 
-                        hhi TEXT, 
-                        dre TEXT, 
-                        wacc TEXT
-                    );
-                """))
-                s.commit()
-        except Exception as e:
-            st.warning(f"Aviso: Tabela não pôde ser verificada. {e}")
+    try:
+        with conn.session as s:
+            s.execute(text("""
+                CREATE TABLE IF NOT EXISTS eco_data (
+                    group_id TEXT PRIMARY KEY, 
+                    participants TEXT, 
+                    company_info TEXT, 
+                    diary TEXT, 
+                    porter TEXT, 
+                    hhi TEXT, 
+                    dre TEXT, 
+                    wacc TEXT
+                );
+            """))
+            s.commit()
+    except Exception as e:
+        st.error(f"Erro ao inicializar banco: {e}")
 
 init_db()
-
 # Função de carregar dados protegida
 def load_data(gid):
     if conn is None: return None
