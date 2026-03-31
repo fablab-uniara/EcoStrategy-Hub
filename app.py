@@ -1,42 +1,64 @@
 import streamlit as st
-from sqlalchemy import text
+import pandas as pd
+from sqlalchemy import create_engine, text
 
 st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
 
-# Conexão automática usando os campos do Secret (Dicionário)
-# O Streamlit vai ler host, port, user, password individualmente agora
-conn = st.connection("postgresql", type="sql")
+# --- CONEXÃO MANUAL (À prova de erros) ---
+@st.cache_resource
+def get_engine():
+    try:
+        db = st.secrets["db"]
+        # Monta a URL de conexão manualmente
+        url = f"postgresql://{db['user']}:{db['password']}@{db['host']}:{db['port']}/{db['database']}?sslmode=require"
+        return create_engine(url, pool_pre_ping=True)
+    except Exception as e:
+        st.error(f"Erro ao configurar banco de dados: {e}")
+        return None
+
+engine = get_engine()
 
 def init_db():
-    try:
-        with conn.session as s:
-            s.execute(text("""
-                CREATE TABLE IF NOT EXISTS eco_data (
-                    group_id TEXT PRIMARY KEY, 
-                    participants TEXT, 
-                    company_info TEXT, 
-                    diary TEXT, 
-                    porter TEXT, 
-                    hhi TEXT, 
-                    dre TEXT, 
-                    wacc TEXT
-                );
-            """))
-            s.commit()
-            # st.success("Conectado ao Supabase com sucesso!") # Opcional: remover após testar
-    except Exception as e:
-        st.error(f"Erro de Conexão: O banco de dados recusou o acesso. Verifique a senha nos Secrets. Detalhes: {e}")
+    if engine:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS eco_data (
+                        group_id TEXT PRIMARY KEY, 
+                        participants TEXT, 
+                        company_info TEXT, 
+                        diary TEXT, 
+                        porter TEXT, 
+                        hhi TEXT, 
+                        dre TEXT, 
+                        wacc TEXT
+                    );
+                """))
+                conn.commit()
+        except Exception as e:
+            st.error(f"Erro ao criar tabela: {e}")
 
 init_db()
-init_db()
-# Função de carregar dados protegida
+
+# Funções de Dados adaptadas para o Engine manual
+def save_data(gid, column, value):
+    if engine:
+        with engine.connect() as conn:
+            # Verifica se existe
+            res = conn.execute(text("SELECT 1 FROM eco_data WHERE group_id = :gid"), {"gid": gid}).fetchone()
+            if not res:
+                conn.execute(text("INSERT INTO eco_data (group_id) VALUES (:gid)"), {"gid": gid})
+            
+            # Atualiza
+            query = text(f"UPDATE eco_data SET {column} = :val WHERE group_id = :gid")
+            conn.execute(query, {"val": str(value), "gid": gid})
+            conn.commit()
+
 def load_data(gid):
-    if conn is None: return None
-    try:
-        with conn.session as s:
-            return s.execute(text("SELECT * FROM eco_data WHERE group_id = :gid"), {"gid": gid}).fetchone()
-    except:
-        return None
+    if engine:
+        with engine.connect() as conn:
+            return conn.execute(text("SELECT * FROM eco_data WHERE group_id = :gid"), {"gid": gid}).fetchone()
+    return None
 
 # Funções de Banco de Dados
 def save_data(gid, column, value):
