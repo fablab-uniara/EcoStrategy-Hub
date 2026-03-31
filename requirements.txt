@@ -1,6 +1,5 @@
-streamlit
+streamlit>=1.28.0
 pandas
 plotly
-st-postgresql-connection
 psycopg2-binary
-sqlalchemy
+SQLAlchemy>=2.0.0
