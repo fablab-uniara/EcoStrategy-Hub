@@ -10,7 +10,7 @@ st.set_page_config(page_title="EcoStrategy Hub", layout="wide")
 # --- CONEXÃO COM BANCO DE DADOS (SUPABASE) ---
 # O Streamlit busca automaticamente a URL que você colou nos Secrets
 try:
-    conn = st.connection("postgresql", type="sql")
+    conn = conn = st.connection("postgresql", type="sql")
 except Exception as e:
     st.error("Erro na conexão com o banco de dados. Verifique os Secrets.")
     st.stop()
