@@ -247,40 +247,40 @@ def check_completeness(data: dict) -> list[str]:
 # AUTENTICAÇÃO
 # ---------------------------------------------------------------------------
 
-def _verify_password(group: str, password: str) -> bool:
-    """Verifica senha por grupo via st.secrets (sem plaintext no código)."""
-    try:
-        passwords: dict = st.secrets["GROUP_PASSWORDS"]
-        expected = passwords.get(group, "")
-        # Comparação simples de string — para produção use bcrypt
-        return password == expected and password != ""
-    except KeyError:
-        # Fallback de desenvolvimento: senha única via secret
-        fallback = st.secrets.get("DEV_PASSWORD", "")
-        return fallback != "" and password == fallback
-
-
-if "auth" not in st.session_state:
+if 'auth' not in st.session_state: 
     st.session_state.auth = False
 
 if not st.session_state.auth:
-    st.markdown("<h2 style='text-align: center; color: #0f172a; padding-top: 50px;'>ECOSTRATEGY INTELLIGENCE</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>Autenticação EcoStrategy</h2>", unsafe_allow_html=True)
     col_l1, col_l2, col_l3 = st.columns([1, 1.6, 1])
+    
     with col_l2:
-        try:
-            st.image("logo.png", use_container_width=True)
-        except Exception:
-            pass
-        group = st.selectbox("Selecione sua Unidade", ["Grupo 1", "Grupo 2", "Grupo 3"])
-        pwd = st.text_input("Credencial de Acesso", type="password")
-        if st.button("Acessar Plataforma"):
-            if _verify_password(group, pwd):
+        try: st.image("logo.png", use_container_width=True)
+        except: pass
+        
+        group_selected = st.selectbox("Selecione sua Unidade", ["Grupo 1", "Grupo 2", "Grupo 3"])
+        pwd_input = st.text_input("Chave de Acesso", type="password")
+        
+        if st.button("Validar Credenciais"):
+            # Busca as senhas nos Secrets
+            passwords = st.secrets.get("GROUP_PASSWORDS", {})
+            dev_pwd = st.secrets.get("DEV_PASSWORD")
+            
+            # Valida se a senha bate com o grupo ou com a senha mestre
+            if pwd_input == passwords.get(group_selected) or pwd_input == dev_pwd:
                 st.session_state.auth = True
-                st.session_state.group = group
+                st.session_state.group = group_selected
+                st.success("Acesso autorizado!")
                 st.rerun()
             else:
-                st.error("Credencial inválida.")
+                st.error("Credencial inválida para esta unidade.")
     st.stop()
+
+# Função de proteção que você mencionou
+def _assert_group_access(target_group):
+    if st.session_state.get("group") != target_group:
+        st.error("Violação de Acesso: Você não tem permissão para alterar dados de outro grupo.")
+        st.stop()
 
 # --- Carrega dados do grupo autenticado ---
 data = load_data(st.session_state.group)
