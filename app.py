@@ -78,8 +78,7 @@ if not st.session_state.auth:
     
     st.title("🏛️ EcoStrategy Hub")
     # ... resto do código
-    st.title("🏛️ EcoStrategy Hub")
-    st.subheader("Login de Consultoria Acadêmica")
+        st.subheader("Login de Consultoria Acadêmica")
     col_l1, col_l2 = st.columns([1, 2])
     with col_l1:
         group = st.selectbox("Selecione seu Grupo", ["Grupo 1", "Grupo 2", "Grupo 3"])
