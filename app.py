@@ -71,8 +71,7 @@ def load_data(gid):
 # --- LOGIN ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 if not st.session_state.auth:
-    if not st.session_state.auth:
-    # Centralizar a logo na tela de login
+        # Centralizar a logo na tela de login
     col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
     with col_logo2:
         st.image("logo.png", width=150)
