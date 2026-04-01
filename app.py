@@ -6,7 +6,7 @@ import json
 from supabase import create_client, Client
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="EcoStrategy Hub - Professional", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="EcoStrategy Hub - Intelligence Elite", layout="wide", initial_sidebar_state="expanded")
 
 # --- CSS WHITELABEL PROFISSIONAL ---
 st.markdown("""
@@ -19,8 +19,8 @@ st.markdown("""
     h1, h2, h3 { color: #002e5d; font-family: 'Segoe UI', sans-serif; font-weight: 700; }
     .risk-card { padding: 20px; border-radius: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; border: 1px solid rgba(0,0,0,0.1); }
     .insight-box { background-color: #ffffff; padding: 20px; border-left: 6px solid #0052cc; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }
-    .stButton>button { background-color: #0052cc; color: white; border-radius: 6px; width: 100%; font-weight: bold; height: 50px; border: none; }
-    .stButton>button:hover { background-color: #003d99; }
+    .swot-card { padding: 15px; border-radius: 8px; height: 150px; color: white; font-size: 0.9em; overflow-y: auto; }
+    .stButton>button { background-color: #0052cc; color: white; border-radius: 6px; width: 100%; font-weight: bold; height: 45px; border: none; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,7 +40,7 @@ def safe_float(val, default=0.0):
     except: return default
 
 def safe_json(val):
-    if val is None or val == "": return {}
+    if val is None or val == "" or val == "None": return {}
     if isinstance(val, dict): return val
     try: return json.loads(val)
     except: return {}
@@ -54,11 +54,10 @@ def load_data(gid):
         res = supabase.table("eco_data").select("*").eq("group_id", gid).execute()
         if res.data:
             row = res.data[0]
-            row['porter'] = safe_json(row.get('porter'))
-            row['dre'] = safe_json(row.get('dre'))
-            row['wacc'] = safe_json(row.get('wacc'))
+            for col in ['porter', 'dre', 'wacc', 'swot']:
+                row[col] = safe_json(row.get(col))
             return row
-        return {'group_id': gid, 'participants': '', 'company_info': '', 'company_desc': '', 'diary': '', 'hhi': '0', 'porter': {}, 'dre': {}, 'wacc': {}}
+        return {'group_id': gid, 'porter': {}, 'dre': {}, 'wacc': {}, 'swot': {}, 'hhi': '0'}
     except: return {}
 
 # --- LOGIN ---
@@ -74,25 +73,21 @@ if not st.session_state.auth:
             st.rerun()
     st.stop()
 
-# CARREGAR DADOS
 data = load_data(st.session_state.group)
 
-# --- SIDEBAR (Configurações Macroeconômicas) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.title(f"📊 {st.session_state.group}")
-    st.header("🌍 Conjuntura Global")
+    st.header("⚙️ Variáveis Macro")
+    selic_ref = st.number_input("Selic de Referência (%)", value=10.75, step=0.25)
     
-    # Selic de Referência para Custo de Oportunidade (EVA)
-    selic_ref = st.number_input("Selic de Referência (%)", value=10.75, step=0.25, help="Usada para comparar ROI vs Renda Fixa.")
-    
-    st.divider()
     menu = st.radio("NAVEGAÇÃO", [
         "1. Dashboard Executivo", 
         "2. Identificação e Empresa", 
         "3. Diário de Bordo (Campo)", 
-        "4. Análise Micro (Estratégia)", 
-        "5. Análise Macro (Monetário)", 
-        "6. Financeiro (WACC & EVA)", 
+        "4. Módulo Micro (Porter/HHI/SWOT)", 
+        "5. Módulo Macro (Monetário)", 
+        "6. Módulo Financeiro (WACC/Valuation)", 
         "7. Relatório Final"
     ])
     st.divider()
@@ -103,42 +98,38 @@ with st.sidebar:
 # --- 1. DASHBOARD EXECUTIVO ---
 if menu == "1. Dashboard Executivo":
     st.title("📈 Dashboard Executivo")
-    
     dre_d = data.get('dre', {})
     ebitda = safe_float(dre_d.get('receita')) - safe_float(dre_d.get('custos'))
     divida = safe_float(dre_d.get('divida'))
-    
-    # Lógica de Risco de Crédito baseada no Indexador escolhido no Módulo Macro
-    idx_val = safe_float(dre_d.get('idx_valor', 10.75))
-    spread_val = safe_float(dre_d.get('spread', 2.0))
-    taxa_total = idx_val + spread_val
-    break_even = (ebitda / divida * 100) - spread_val if divida > 0 else 0
+    idx_total = safe_float(dre_d.get('idx_valor')) + safe_float(dre_d.get('spread'))
+    break_even = (ebitda / divida * 100) if divida > 0 else 0
 
     hhi_val = 0
     try: hhi_val = sum([float(x)**2 for x in str(data.get('hhi', '0')).split(",") if x.strip()])
     except: hhi_val = 0
 
-    roi = safe_float(data.get('wacc', {}).get('roi'))
-    w_val = safe_float(data.get('wacc', {}).get('wacc_final', 15.0))
+    w_d = data.get('wacc', {})
+    roi = safe_float(w_d.get('roi'))
+    w_final = safe_float(w_d.get('wacc_final', 15.0))
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        color = "#28a745" if taxa_total < (ebitda/divida*100 if divida > 0 else 100) else "#dc3545"
-        st.markdown(f'<div class="risk-card" style="background:{color}">RISCO CRÉDITO<br>Taxa Atual: {taxa_total:.2f}%</div>', unsafe_allow_html=True)
+        c = "#28a745" if idx_total < (ebitda/divida*100 if divida > 0 else 100) else "#dc3545"
+        st.markdown(f'<div class="risk-card" style="background:{c}">RISCO CRÉDITO<br>Taxa: {idx_total:.2f}%</div>', unsafe_allow_html=True)
     with col2:
-        m_color = "#28a745" if hhi_val < 1500 else "#ffc107" if hhi_val < 2500 else "#dc3545"
-        st.markdown(f'<div class="risk-card" style="background:{m_color}">RISCO MERCADO<br>HHI: {int(hhi_val)}</div>', unsafe_allow_html=True)
+        mc = "#28a745" if hhi_val < 1500 else "#ffc107" if hhi_val < 2500 else "#dc3545"
+        st.markdown(f'<div class="risk-card" style="background:{mc}">RISCO MERCADO<br>HHI: {int(hhi_val)}</div>', unsafe_allow_html=True)
     with col3:
-        v_color = "#28a745" if roi > w_val else "#dc3545"
-        st.markdown(f'<div class="risk-card" style="background:{v_color}">VALOR (EVA)<br>ROI: {roi}%</div>', unsafe_allow_html=True)
+        vc = "#28a745" if roi > w_final else "#dc3545"
+        st.markdown(f'<div class="risk-card" style="background:{vc}">CRIAÇÃO VALOR<br>ROI: {roi}%</div>', unsafe_allow_html=True)
 
 # --- 2. IDENTIFICAÇÃO ---
 elif menu == "2. Identificação e Empresa":
     st.title("👥 Identificação")
-    with st.form("f_ident"):
-        membros = st.text_area("Integrantes do Grupo", value=data.get('participants', ''))
-        empresa = st.text_input("Nome da Empresa", value=data.get('company_info', ''))
-        desc = st.text_area("Modelo de Negócio", value=data.get('company_desc', ''))
+    with st.form("f_id"):
+        membros = st.text_area("Integrantes", value=data.get('participants', ''))
+        empresa = st.text_input("Empresa", value=data.get('company_info', ''))
+        desc = st.text_area("Descrição", value=data.get('company_desc', ''))
         if st.form_submit_button("Salvar"):
             save_data(st.session_state.group, "participants", membros)
             save_data(st.session_state.group, "company_info", empresa)
@@ -148,16 +139,17 @@ elif menu == "2. Identificação e Empresa":
 # --- 3. DIÁRIO DE BORDO ---
 elif menu == "3. Diário de Bordo (Campo)":
     st.title("📔 Diário de Bordo")
-    notas = st.text_area("Notas das Visitas", value=data.get('diary', ''), height=450)
+    notas = st.text_area("Notas das Visitas", value=data.get('diary', ''), height=400)
     if st.button("Sincronizar"):
         save_data(st.session_state.group, "diary", notas)
         st.success("Sincronizado!")
 
-# --- 4. MICRO ---
-elif menu == "4. Análise Micro (Estratégia)":
-    st.title("🔬 Análise Micro")
-    tab1, tab2 = st.tabs(["Matriz de Porter", "HHI"])
-    with tab1:
+# --- 4. MÓDULO MICRO (ADICIONADO SWOT) ---
+elif menu == "4. Módulo Micro (Porter/HHI/SWOT)":
+    st.title("🔬 Análise Microeconômica e Estratégica")
+    t1, t2, t3 = st.tabs(["Matriz de Porter", "HHI", "Matriz SWOT (FOFA)"])
+    
+    with t1:
         p = data.get('porter', {})
         c1, c2 = st.columns(2)
         p1 = c1.slider("Entrantes", 1, 5, int(p.get('p1', 3)))
@@ -167,9 +159,10 @@ elif menu == "4. Análise Micro (Estratégia)":
         p5 = c2.slider("Rivalidade", 1, 5, int(p.get('p5', 3)))
         if st.button("Salvar Porter"):
             save_data(st.session_state.group, "porter", {"p1":p1,"p2":p2,"p3":p3,"p4":p4,"p5":p5})
-            st.success("Salvo!")
-    with tab2:
-        h_in = st.text_input("Market Shares (ex: 40,30,20)", value=data.get('hhi', ''))
+            st.success("Matriz Salva!")
+
+    with t2:
+        h_in = st.text_input("Shares (ex: 40,30,20)", value=data.get('hhi', ''))
         if h_in:
             try:
                 sh = [float(x.strip()) for x in h_in.split(",") if x.strip()]
@@ -179,87 +172,95 @@ elif menu == "4. Análise Micro (Estratégia)":
             except: st.error("Erro no formato.")
         if st.button("Salvar HHI"): save_data(st.session_state.group, "hhi", h_in)
 
-# --- 5. MONETÁRIO (MACRO) ---
-elif menu == "5. Análise Macro (Monetário)":
-    st.title("🏦 Monetário, Indexadores e Stress Test")
-    
-    with st.expander("🎓 Explicação: Indexadores de Dívida"):
-        st.write("""
-        Empresas podem se financiar por diferentes taxas. A **Selic** é a base, mas o BNDES usa a **TJLP/TLP**, 
-        contratos podem usar o **IGP-M** (inflação do atacado) ou **IPCA** (consumidor). 
-        A taxa final é sempre o **Indexador + Spread (Margem de risco do banco)**.
-        """)
+    with t3:
+        sw = data.get('swot', {})
+        st.subheader("Matriz FOFA Interativa")
+        with st.form("f_swot"):
+            c1, c2 = st.columns(2)
+            f = c1.text_area("Forças (Strengths)", value=sw.get('f', ''))
+            o = c1.text_area("Oportunidades (Opportunities)", value=sw.get('o', ''))
+            fra = c2.text_area("Fraquezas (Weaknesses)", value=sw.get('fra', ''))
+            a = c2.text_area("Ameaças (Threats)", value=sw.get('a', ''))
+            if st.form_submit_button("Salvar SWOT"):
+                save_data(st.session_state.group, "swot", {"f":f, "fra":fra, "o":o, "a":a})
+                st.rerun()
+        
+        st.markdown("### Visualização Estratégica")
+        c1, c2 = st.columns(2)
+        c1.markdown(f'<div class="swot-card" style="background:#28a745"><b>FORÇAS</b><br>{f}</div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="swot-card" style="background:#dc3545"><b>FRAQUEZAS</b><br>{fra}</div>', unsafe_allow_html=True)
+        c1.markdown(f'<div class="swot-card" style="background:#0052cc; margin-top:10px"><b>OPORTUNIDADES</b><br>{o}</div>', unsafe_allow_html=True)
+        c2.markdown(f'<div class="swot-card" style="background:#ffc107; color:black; margin-top:10px"><b>AMEAÇAS</b><br>{a}</div>', unsafe_allow_html=True)
 
+# --- 5. MONETÁRIO ---
+elif menu == "5. Módulo Macro (Monetário)":
+    st.title("🏦 Monetário e Indexadores")
     dre_d = data.get('dre', {})
     c1, c2 = st.columns([1, 1.5])
-    
     with c1:
-        st.subheader("Configuração da Dívida")
-        idx_nome = st.selectbox("Indexador da Dívida", ["Selic", "TJLP", "IGP-M", "IPCA", "Outro"], index=0)
-        idx_val = st.number_input(f"Valor atual do {idx_nome} (%)", value=safe_float(dre_d.get('idx_valor', 10.75)))
-        spread = st.number_input("Spread Bancário (+ % a.a.)", value=safe_float(dre_d.get('spread', 2.0)))
-        
-        st.divider()
+        idx_nome = st.selectbox("Indexador", ["Selic", "TJLP", "IGP-M", "IPCA", "Outro"], index=0)
+        idx_val = st.number_input(f"Valor do {idx_nome} (%)", value=safe_float(dre_d.get('idx_valor', 10.75)))
+        spread = st.number_input("Spread (+%)", value=safe_float(dre_d.get('spread', 2.0)))
         rec = st.number_input("Receita Bruta", value=safe_float(dre_d.get('receita', 1000000)))
         cus = st.number_input("Custos Operacionais", value=safe_float(dre_d.get('custos', 700000)))
         div = st.number_input("Dívida Total", value=safe_float(dre_d.get('divida', 400000)))
-        
-        if st.button("Salvar Cenário Macro"):
+        if st.button("Salvar Macro"):
             save_data(st.session_state.group, "dre", {"idx_nome":idx_nome, "idx_valor":idx_val, "spread":spread, "receita":rec, "custos":cus, "divida":div})
             st.rerun()
-            
     with c2:
-        taxa_total = idx_val + spread
         ebitda = rec - cus
-        st.subheader(f"Stress Test: Variação do {idx_nome}")
-        sim_idx = st.slider(f"Simular {idx_nome} (%)", 0.0, 30.0, idx_val)
-        
-        custo_juros = div * ((sim_idx + spread)/100)
-        st.metric(f"Custo Juros ({idx_nome} + {spread}%)", f"R$ {custo_juros:,.2f}")
-        st.metric("Lucro Operacional Líquido", f"R$ {ebitda - custo_juros:,.2f}")
-        
-        # Gráfico de Ruptura
-        ss = list(range(0, 31))
-        ls = [ebitda - (div * (s + spread)/100) for s in ss]
-        fig = px.line(x=ss, y=ls, title=f"Sensibilidade: Lucro vs {idx_nome}", labels={'x':f'{idx_nome} %', 'y':'Lucro'})
-        fig.add_hline(y=0, line_dash="dash", line_color="red", annotation_text="Insolvência")
+        sim = st.slider(f"Simular {idx_nome} %", 0.0, 30.0, idx_val)
+        st.metric("Lucro Estimado", f"R$ {ebitda - (div*(sim+spread)/100):,.2f}")
+        fig = px.line(x=list(range(0,31)), y=[ebitda - (div*(s+spread)/100) for s in range(0,31)], title="Análise de Ruptura")
+        fig.add_hline(y=0, line_dash="dash", line_color="red")
         st.plotly_chart(fig)
 
-# --- 6. FINANCEIRO ---
-elif menu == "6. Financeiro (WACC/EVA)":
-    st.title("💰 Viabilidade Econômica")
-    w_d = data.get('wacc', {})
-    dre_d = data.get('dre', {})
+# --- 6. MÓDULO FINANCEIRO (ADICIONADO VALUATION) ---
+elif menu == "6. Módulo Financeiro (WACC/Valuation)":
+    st.title("💰 Viabilidade e Valuation")
+    tab1, tab2 = st.tabs(["WACC & EVA", "Simulador de Valuation (DCF)"])
     
-    # Busca a taxa de juros real da dívida configurada no Módulo Macro
-    custo_divida_macro = safe_float(dre_d.get('idx_valor')) + safe_float(dre_d.get('spread'))
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Cálculo do WACC")
-        ke = st.number_input("Ke (Custo Cap. Próprio %)", value=safe_float(w_d.get('ke', 15)))
-        kd = st.number_input("Kd (Custo da Dívida %)", value=custo_divida_macro if custo_divida_macro > 0 else 12.0)
-        eq = st.slider("Equity Ratio %", 0, 100, int(safe_float(w_d.get('eq_ratio', 60)))) / 100
-        w_calc = (eq * (ke/100)) + ((1 - eq) * (kd/100) * 0.66)
-        st.metric("WACC Final", f"{w_calc*100:.2f}%")
-    with c2:
-        st.subheader("Análise EVA")
-        roi = st.number_input("ROI da Empresa (%)", value=safe_float(w_d.get('roi', 18)))
-        # EVA comparado à Selic Global definida na Sidebar + Prêmio de Risco Acadêmico (5%)
-        eva = roi - (selic_ref + 5.0)
-        st.metric("EVA (ROI vs Selic Ref + 5%)", f"{eva:.2f}%")
-        if st.button("Salvar Financeiro"):
-            save_data(st.session_state.group, "wacc", {"ke":ke, "kd":kd, "eq_ratio":eq*100, "roi":roi, "wacc_final":w_calc*100})
+    with tab1:
+        w_d = data.get('wacc', {})
+        c1, c2 = st.columns(2)
+        with c1:
+            ke = st.number_input("Ke %", value=safe_float(w_d.get('ke', 15)))
+            kd = st.number_input("Kd %", value=safe_float(w_d.get('kd', 12)))
+            eq = st.slider("Equity %", 0, 100, int(safe_float(w_d.get('eq_ratio', 60)))) / 100
+            w_calc = (eq * (ke/100)) + ((1 - eq) * (kd/100) * 0.66)
+            st.metric("WACC Final", f"{w_calc*100:.2f}%")
+        with c2:
+            roi = st.number_input("ROI %", value=safe_float(w_d.get('roi', 18)))
+            eva = roi - (selic_ref + 5.0)
+            st.metric("EVA", f"{eva:.2f}%")
+            if st.button("Salvar Financeiro"):
+                save_data(st.session_state.group, "wacc", {"ke":ke, "kd":kd, "eq_ratio":eq*100, "roi":roi, "wacc_final":w_calc*100})
+
+    with tab2:
+        st.subheader("Simulador de Valor da Empresa (Perpetuidade)")
+        st.write("Baseado no EBITDA atual e no WACC calculado anteriormente.")
+        dre_d = data.get('dre', {})
+        ebitda_base = safe_float(dre_d.get('receita')) - safe_float(dre_d.get('custos'))
+        wacc_base = safe_float(w_d.get('wacc_final')) / 100
+        
+        g = st.slider("Taxa de Crescimento na Perpetuidade (g) %", 0.0, 10.0, 3.0) / 100
+        
+        if wacc_base > g:
+            valuation = (ebitda_base * (1 + g)) / (wacc_base - g)
+            st.metric("Enterprise Value (Valor de Mercado)", f"R$ {valuation:,.2f}")
+            st.info(f"Fórmula: EBITDA(1+g) / (WACC - g). O valor reflete a capacidade de geração de caixa futura descontada ao presente.")
+        else:
+            st.error("Erro Matemático: O WACC deve ser maior que o Crescimento (g) para o cálculo de perpetuidade.")
 
 # --- 7. RELATÓRIO ---
 elif menu == "7. Relatório Final":
     st.title("📄 Relatório Consolidado")
     st.write(f"Empresa: {data.get('company_info')} | Grupo: {st.session_state.group}")
     st.divider()
+    st.subheader("Matriz SWOT")
+    sw = data.get('swot', {})
+    st.write(f"**Forças:** {sw.get('f')} | **Fraquezas:** {sw.get('fra')}")
+    st.divider()
     st.subheader("Diário de Bordo")
     st.info(data.get('diary', 'Sem registros.'))
-    st.subheader("Diagnóstico de Endividamento")
-    dre_r = data.get('dre', {})
-    st.write(f"- Indexador Principal: {dre_r.get('idx_nome', 'Selic')}")
-    st.write(f"- Taxa Final (Indexador + Spread): {safe_float(dre_r.get('idx_valor')) + safe_float(dre_r.get('spread'))}%")
-    st.button("Exportar (Ctrl+P)")
+    st.button("Imprimir (Ctrl+P)")
