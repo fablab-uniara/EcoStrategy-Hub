@@ -108,16 +108,28 @@ if not st.session_state.auth:
 data = load_data(st.session_state.group)
 
 # --- SIDEBAR ---
+# --- SIDEBAR (MENU LATERAL) ---
 with st.sidebar:
-     # Insira sua logo aqui (ajuste o width conforme necessário)
-    st.image("logo.png", use_container_width=True) 
+    # 1. Logomarca (Topo)
+    try:
+        st.image("logo.png", use_container_width=True)
+    except:
+        pass # Se não houver logo, ele pula silenciosamente
+
+    # 2. Nome do Grupo (APENAS ESTA LINHA)
     st.title(f"📊 {st.session_state.group}")
-    # ... resto do código
-    st.title(f"📊 {st.session_state.group}")
+    
+    st.divider()
+
+    # 3. Variáveis de Referência
     st.header("🌍 Conjuntura Global")
     selic_ref = st.number_input("Selic de Referência (%)", value=10.75, step=0.25)
+    
     st.divider()
-    menu = st.radio("ETAPAS DA CONSULTORIA", [
+
+    # 4. Navegação
+    st.caption("ETAPAS DA CONSULTORIA")
+    menu = st.radio("Selecione a etapa:", [
         "1. Dashboard Executivo", 
         "2. Identificação da Equipe", 
         "3. Perfil da Empresa",
@@ -126,9 +138,10 @@ with st.sidebar:
         "6. Módulo Macro (Monetário)", 
         "7. Módulo Financeiro & Valor", 
         "8. Relatório Final"
-    ])
+    ], label_visibility="collapsed") # label_visibility oculta o texto repetido do radio
+
     st.divider()
-    if st.button("Sair (Logout)"):
+    if st.button("Logout / Sair"):
         st.session_state.auth = False
         st.rerun()
 
