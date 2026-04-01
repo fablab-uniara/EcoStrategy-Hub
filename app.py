@@ -92,8 +92,7 @@ data = load_data(st.session_state.group)
 
 # --- SIDEBAR ---
 with st.sidebar:
-    with st.sidebar:
-    # Insira sua logo aqui (ajuste o width conforme necessário)
+     # Insira sua logo aqui (ajuste o width conforme necessário)
     st.image("logo.png", use_container_width=True) 
     st.title(f"📊 {st.session_state.group}")
     # ... resto do código
