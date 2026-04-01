@@ -93,18 +93,23 @@ def get_live_selic() -> float:
 # CONEXÃO SUPABASE
 # ---------------------------------------------------------------------------
 
-@st.cache_resource
-def get_supabase_client() -> Client:
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+# --- CONEXÃO SUPABASE ---
+def init_connection():
+    try:
+        # Verifica se as chaves existem nos Secrets
+        if "SUPABASE_URL" not in st.secrets or "SUPABASE_KEY" not in st.secrets:
+            st.error("⚠️ Erro: Chaves 'SUPABASE_URL' ou 'SUPABASE_KEY' não encontradas nos Secrets do Streamlit.")
+            st.stop()
+            
+        url: str = st.secrets["SUPABASE_URL"]
+        key: str = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"❌ Falha técnica na conexão: {e}")
+        st.stop()
 
-try:
-    supabase = get_supabase_client()
-except Exception as e:
-    st.error("Erro Crítico de Conexão com o Banco de Dados.")
-    st.stop()
-
+# Inicializa o cliente
+supabase = init_connection()
 # ---------------------------------------------------------------------------
 # PERSISTÊNCIA & SEGURANÇA
 # ---------------------------------------------------------------------------
