@@ -71,6 +71,14 @@ def load_data(gid):
 # --- LOGIN ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 if not st.session_state.auth:
+    if not st.session_state.auth:
+    # Centralizar a logo na tela de login
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
+    with col_logo2:
+        st.image("logo.png", width=150)
+    
+    st.title("🏛️ EcoStrategy Hub")
+    # ... resto do código
     st.title("🏛️ EcoStrategy Hub")
     st.subheader("Login de Consultoria Acadêmica")
     col_l1, col_l2 = st.columns([1, 2])
@@ -85,6 +93,11 @@ data = load_data(st.session_state.group)
 
 # --- SIDEBAR ---
 with st.sidebar:
+    with st.sidebar:
+    # Insira sua logo aqui (ajuste o width conforme necessário)
+    st.image("logo.png", use_container_width=True) 
+    st.title(f"📊 {st.session_state.group}")
+    # ... resto do código
     st.title(f"📊 {st.session_state.group}")
     st.header("🌍 Conjuntura Global")
     selic_ref = st.number_input("Selic de Referência (%)", value=10.75, step=0.25)
