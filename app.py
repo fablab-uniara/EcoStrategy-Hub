@@ -69,23 +69,41 @@ def load_data(gid):
     except: return {}
 
 # --- LOGIN ---
-if 'auth' not in st.session_state: st.session_state.auth = False
+# --- LOGIN ---
+if 'auth' not in st.session_state: 
+    st.session_state.auth = False
+
 if not st.session_state.auth:
-        # Centralizar a logo na tela de login
+    # 1. Centralização da Logo
     col_logo1, col_logo2, col_logo3 = st.columns([1, 1, 1])
     with col_logo2:
-        st.image("logo.png", width=150)
+        # Altere "logo.png" para o nome do seu arquivo ou link da imagem
+        try:
+            st.image("logo.png", use_container_width=True)
+        except:
+            st.info("Logomarca (logo.png) não encontrada. Carregando modo padrão.")
+
+    # 2. Títulos de Acesso
+    st.markdown("<h1 style='text-align: center;'>🏛️ EcoStrategy Hub</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center;'>Login de Consultoria Acadêmica</h3>", unsafe_allow_html=True)
     
-    st.title("🏛️ EcoStrategy Hub")
-    # ... resto do código
-        st.subheader("Login de Consultoria Acadêmica")
-    col_l1, col_l2 = st.columns([1, 2])
-    with col_l1:
+    st.divider()
+
+    # 3. Formulário de Acesso
+    col_l1, col_l2, col_l3 = st.columns([1, 2, 1]) # Usando 3 colunas para centralizar o box de login
+    with col_l2:
         group = st.selectbox("Selecione seu Grupo", ["Grupo 1", "Grupo 2", "Grupo 3"])
-        if st.text_input("Senha", type="password") == "eco123" and st.button("Acessar Plataforma"):
-            st.session_state.auth, st.session_state.group = True, group
-            st.rerun()
-    st.stop()
+        password = st.text_input("Senha de Acesso", type="password")
+        
+        if st.button("Acessar Plataforma"):
+            if password == "eco123":
+                st.session_state.auth = True
+                st.session_state.group = group
+                st.rerun()
+            else:
+                st.error("Senha incorreta. Tente novamente.")
+    
+    st.stop() # Impede que o restante do app carregue sem login
 
 data = load_data(st.session_state.group)
 
