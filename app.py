@@ -34,7 +34,7 @@ except:
     st.error("Erro Crítico: Chaves do Supabase não configuradas.")
     st.stop()
 
-# --- FUNÇÕES DE SEGURANÇA ---
+# --- FUNÇÕES DE SEGURANÇA E CÁLCULO ---
 def safe_float(val, default=0.0):
     if val is None: return default
     try: return float(val)
@@ -45,6 +45,19 @@ def safe_json(val):
     if isinstance(val, dict): return val
     try: return json.loads(val)
     except: return {}
+
+def get_hhi_metrics(hhi_string):
+    """Função robusta para calcular HHI e lista de shares sem erros"""
+    if not hhi_string or hhi_string == '0':
+        return 0, []
+    try:
+        # Limpa espaços, remove vírgulas extras no final e separa
+        clean_str = str(hhi_string).replace(" ", "")
+        shares = [float(x) for x in clean_str.split(",") if x]
+        hhi_val = sum([v**2 for v in shares])
+        return hhi_val, shares
+    except:
+        return 0, []
 
 def save_data(gid, column, value):
     if isinstance(value, (dict, list)): value = json.dumps(value)
@@ -110,9 +123,8 @@ if menu == "1. Dashboard Executivo":
     idx_total = safe_float(dre_d.get('idx_valor')) + safe_float(dre_d.get('spread'))
     break_even = (ebitda / divida * 100) if divida > 0 else 0
 
-    hhi_val = 0
-    try: hhi_val = sum([float(x)**2 for x in str(data.get('hhi', '0')).split(",") if x.strip()])
-    except: hhi_val = 0
+    # Chamada da função robusta HHI
+    hhi_val, _ = get_hhi_metrics(data.get('hhi', '0'))
 
     w_d = data.get('wacc', {})
     roi = safe_float(w_d.get('roi'))
@@ -127,12 +139,11 @@ if menu == "1. Dashboard Executivo":
         mc = "#28a745" if hhi_val < 1500 else "#ffc107" if hhi_val < 2500 else "#dc3545"
         st.markdown(f'<div class="risk-card" style="background:{mc}">RISCO MERCADO<br>HHI: {int(hhi_val)}</div>', unsafe_allow_html=True)
     with col3:
-        vc = "#28a745" if roi > w_final else "#dc3545"
+        vc = "#28a745" if roi > (selic_ref + 5) else "#dc3545"
         st.markdown(f'<div class="risk-card" style="background:{vc}">CRIAÇÃO VALOR<br>ROI: {roi}%</div>', unsafe_allow_html=True)
 
     st.divider()
     
-    # NOVO: INDICADORES NO DASHBOARD
     cola, colb = st.columns(2)
     with cola:
         st.subheader("💎 Valuation do Negócio")
@@ -175,7 +186,7 @@ elif menu == "4. Módulo Micro (Porter/HHI/SWOT)":
     with st.expander("🎓 Saiba mais: Porter, HHI e SWOT"):
         st.markdown("**Matriz de Porter:** Analisa a atratividade do setor através de 5 forças competitivas.")
         st.markdown("**Índice HHI:** Mede a concentração de mercado. <span class='formula-text'>HHI = Σ (Share²)</span>", unsafe_allow_html=True)
-        st.markdown("**SWOT:** Ferramenta de planejamento estratégico que cruza fatores internos (Forças/Fraquezas) com externos (Oportunidades/Ameaças).")
+        st.markdown("**SWOT:** Analisa Forças/Fraquezas e Oportunidades/Ameaças.")
 
     t1, t2, t3 = st.tabs(["Matriz de Porter", "HHI", "Matriz SWOT (FOFA)"])
     with t1:
@@ -191,14 +202,19 @@ elif menu == "4. Módulo Micro (Porter/HHI/SWOT)":
             st.success("Porter Salvo!")
     with t2:
         h_in = st.text_input("Shares (ex: 40,30,20)", value=data.get('hhi', ''))
-        if h_in:
-            try:
-                sh = [float(x.strip()) for x in h_in.split(",") if x.strip()]
-                h_val = sum([v**2 for v in sh])
-                st.metric("HHI", int(h_val))
-                st.plotly_chart(px.pie(values=sh, names=[f"Empresa {i+1}" for i in range(len(sh))], hole=0.4))
-            except: st.error("Erro no formato das shares.")
-        if st.button("Salvar HHI"): save_data(st.session_state.group, "hhi", h_in)
+        hhi_calc, sh_list = get_h_metrics = get_hhi_metrics(h_in)
+        
+        if sh_list:
+            st.metric("HHI Calculado", int(hhi_calc))
+            fig = px.pie(values=sh_list, names=[f"Empresa {i+1}" for i in range(len(sh_list))], hole=0.4)
+            st.plotly_chart(fig)
+        else:
+            st.info("Insira as participações de mercado separadas por vírgula.")
+            
+        if st.button("Salvar HHI"):
+            save_data(st.session_state.group, "hhi", h_in)
+            st.success("HHI Salvo!")
+            
     with t3:
         sw = data.get('swot', {})
         with st.form("f_swot"):
@@ -222,7 +238,6 @@ elif menu == "5. Módulo Macro (Monetário)":
     
     with st.expander("🎓 Saiba mais: Indexadores e Stress Test"):
         st.markdown("**Taxa de Juros Real:** <span class='formula-text'>Juros Totais = Indexador + Spread</span>", unsafe_allow_html=True)
-        st.markdown("**Stress Test:** Simula o impacto do aumento do indexador no Lucro Operacional. O ponto onde o lucro atinge zero é o 'Ponto de Ruptura'.")
 
     dre_d = data.get('dre', {})
     c1, c2 = st.columns([1, 1.5])
@@ -250,9 +265,8 @@ elif menu == "6. Módulo Financeiro (WACC/Valuation)":
     st.title("💰 Viabilidade e Valuation")
     
     with st.expander("🎓 Saiba mais: WACC, EVA e Gordon"):
-        st.markdown("**WACC:** Custo médio ponderado de capital. <span class='formula-text'>WACC = (E/V * Ke) + (D/V * Kd * (1-T))</span>", unsafe_allow_html=True)
-        st.markdown("**EVA:** Criação de valor real. <span class='formula-text'>EVA = ROI - (Selic + Risco)</span>", unsafe_allow_html=True)
-        st.markdown("**Valuation (Modelo de Gordon):** Valor presente da perpetuidade. <span class='formula-text'>EV = Fluxo(1+g) / (WACC - g)</span>", unsafe_allow_html=True)
+        st.markdown("**WACC:** <span class='formula-text'>WACC = (E/V * Ke) + (D/V * Kd * (1-T))</span>", unsafe_allow_html=True)
+        st.markdown("**Valuation:** <span class='formula-text'>EV = Fluxo(1+g) / (WACC - g)</span>", unsafe_allow_html=True)
 
     t1, t2 = st.tabs(["WACC & EVA", "Simulador de Valuation"])
     with t1:
@@ -273,7 +287,10 @@ elif menu == "6. Módulo Financeiro (WACC/Valuation)":
     with t2:
         st.subheader("Valuation por Perpetuidade")
         g = st.slider("Crescimento Anual (g) %", 0.0, 10.0, safe_float(w_d.get('g_growth', 3.0)))
-        if st.button("Salvar g"): save_data(st.session_state.group, "wacc", {**w_d, "g_growth": g})
+        if st.button("Salvar g"):
+            # Salva o g mantendo os outros dados do wacc
+            save_data(st.session_state.group, "wacc", {**w_d, "g_growth": g})
+            st.rerun()
         
         ebitda_v = safe_float(data.get('dre', {}).get('receita')) - safe_float(data.get('dre', {}).get('custos'))
         w_v = safe_float(w_d.get('wacc_final')) / 100
