@@ -14,45 +14,122 @@ logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(m
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="EcoStrategy Intelligence", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS WHITELABEL & DESIGN DE ALTO CONTRASTE ---
 st.markdown("""
     <style>
+    /* 1. OCULTAR ELEMENTOS TÉCNICOS */
     .stAppDeployButton {display:none !important;}
     footer {visibility: hidden !important;}
     #MainMenu {visibility: hidden !important;}
     header {visibility: hidden !important;}
 
-    .stApp { background-color: #f8fafc; font-family: 'Inter', -apple-system, sans-serif; }
+    /* 2. ÁREA PRINCIPAL (Fundo Claro / Texto Escuro) */
+    .stApp { 
+        background-color: #f8fafc !important; 
+        font-family: 'Inter', -apple-system, sans-serif;
+    }
+    
+    /* Forçar cor de textos, parágrafos e marcações na área principal */
+    .stApp p, .stApp span, .stApp label, .stApp li {
+        color: #1e293b !important;
+    }
 
-    [data-testid="stSidebar"] { background-color: #0f172a; border-right: 1px solid #1e293b; min-width: 310px !important; }
-    [data-testid="stSidebar"] h2 { color: #ffffff !important; font-size: 1.3rem; font-weight: 800; text-align: center; margin-bottom: 10px; }
-    [data-testid="stSidebar"] p { color: #cbd5e1 !important; font-size: 0.85rem; }
-    [data-testid="stSidebar"] .stMarkdown { color: #f1f5f9 !important; }
+    /* Forçar cor dos Títulos na área principal */
+    h1, h2, h3, h4 { 
+        color: #002e5d !important; 
+        font-weight: 800 !important; 
+        letter-spacing: -0.04em !important; 
+    }
 
-    .stRadio > label { display: none; }
-    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] { gap: 8px; padding-top: 15px; }
-    [data-testid="stSidebar"] .stRadio label {
+    /* 3. SIDEBAR (Fundo Escuro / Texto Claro) */
+    [data-testid="stSidebar"] { 
+        background-color: #0f172a !important; 
+        border-right: 1px solid #1e293b !important; 
+        min-width: 310px !important; 
+    }
+    
+    /* Cor de todos os textos dentro da Sidebar */
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] .stMarkdown {
         color: #f1f5f9 !important;
+    }
+
+    /* Customização específica do Menu Lateral (Radio) */
+    .stRadio > label { display: none !important; }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] { gap: 8px !important; padding-top: 15px !important; }
+    [data-testid="stSidebar"] .stRadio label {
+        color: #cbd5e1 !important;
         font-weight: 500 !important;
         font-size: 0.92rem !important;
-        background-color: transparent;
-        border-radius: 6px;
+        border-radius: 6px !important;
         padding: 10px 15px !important;
-        transition: 0.2s all;
-        cursor: pointer;
+        transition: 0.2s all !important;
     }
-    [data-testid="stSidebar"] .stRadio label:hover { background-color: #1e293b !important; color: #ffffff !important; }
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] { color: #f1f5f9 !important; }
+    [data-testid="stSidebar"] .stRadio label:hover { 
+        background-color: #1e293b !important; 
+        color: #ffffff !important; 
+    }
 
-    h1, h2, h3 { color: #002e5d; font-weight: 800; letter-spacing: -0.04em; }
-    .risk-card { padding: 22px; border-radius: 8px; text-align: center; color: white; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .insight-box { background-color: #ffffff; padding: 25px; border-left: 5px solid #3b82f6; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 25px; border: 1px solid #f1f5f9; }
+    /* 4. COMPONENTES DE BI (Cards e Caixas) */
+    .risk-card { 
+        padding: 22px; 
+        border-radius: 8px; 
+        text-align: center; 
+        color: white !important; /* Sempre branco dentro dos semáforos */
+        font-weight: 600; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    }
+    
+    .insight-box { 
+        background-color: #ffffff !important; 
+        color: #1e293b !important; /* Forçar texto escuro */
+        padding: 25px; 
+        border-left: 5px solid #3b82f6; 
+        border-radius: 4px; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+        margin-bottom: 25px; 
+        border: 1px solid #f1f5f9; 
+    }
 
-    .formula-text { font-family: 'SF Mono', monospace; background-color: #f1f5f9; padding: 12px; border-radius: 6px; font-size: 0.85em; color: #334155; border: 1px solid #e2e8f0; display: block; margin: 12px 0; }
-    .guide-text { font-size: 0.9em; color: #475569; line-height: 1.6; background: #eff6ff; padding: 14px; border-radius: 6px; border: 1px solid #dbeafe; margin-bottom: 20px;}
+    .formula-text { 
+        font-family: 'SF Mono', monospace; 
+        background-color: #f1f5f9 !important; 
+        color: #334155 !important; /* Forçar texto escuro */
+        padding: 12px; 
+        border-radius: 6px; 
+        font-size: 0.85em; 
+        border: 1px solid #e2e8f0; 
+        display: block; 
+        margin: 12px 0; 
+    }
 
-    .stButton>button { background-color: #2563eb; color: white; border-radius: 6px; width: 100%; font-weight: 600; height: 48px; border: none; transition: 0.2s; }
-    .stButton>button:hover { background-color: #1d4ed8; }
+    .guide-text { 
+        font-size: 0.9em; 
+        color: #475569 !important; /* Forçar texto escuro */
+        line-height: 1.6; 
+        background: #eff6ff !important; 
+        padding: 14px; 
+        border-radius: 6px; 
+        border: 1px solid #dbeafe; 
+        margin-bottom: 20px;
+    }
+
+    /* 5. BOTÕES */
+    .stButton>button { 
+        background-color: #2563eb !important; 
+        color: white !important; 
+        border-radius: 6px; 
+        width: 100%; 
+        font-weight: 600; 
+        height: 48px; 
+        border: none; 
+    }
+    .stButton>button:hover { background-color: #1d4ed8 !important; }
+
+    /* Forçar visibilidade de Inputs */
+    input { color: #1e293b !important; }
     </style>
     """, unsafe_allow_html=True)
 
