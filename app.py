@@ -9,40 +9,60 @@ from datetime import datetime
 from supabase import create_client, Client
 
 # --- CONFIGURAÇÃO INICIAL ---
-st.set_page_config(page_title="EcoStrategy Intelligence", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="EcoStrategy Academic Excellence", layout="wide", initial_sidebar_state="expanded")
 
-# --- CSS MASTER WHITELABEL & DESIGN PEDAGÓGICO ---
+# --- CSS ACADÊMICO REFORÇADO ---
 st.markdown("""
     <style>
-    /* Ocultar elementos técnicos */
-    .stAppDeployButton {display:none !important;}
-    footer {visibility: hidden !important;}
-    #MainMenu {visibility: hidden !important;}
-    header {visibility: hidden !important;}
-
-    /* Typography & Core Design */
-    .stApp { background-color: #f8fafc !important; font-family: 'Inter', sans-serif; }
-    .stApp p, .stApp span, .stApp label { color: #1e293b !important; }
+    .stAppDeployButton, footer, #MainMenu, header {display:none !important;}
+    .stApp { background-color: #fcfcfc !important; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #1e293b !important; }
     
-    [data-testid="stSidebar"] { background-color: #0f172a !important; border-right: 1px solid #1e293b !important; min-width: 320px !important; }
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] label { color: #f1f5f9 !important; }
-    
-    h1, h2, h3 { color: #002e5d !important; font-weight: 800; letter-spacing: -0.04em !important; }
-
     /* Blocos Pedagógicos */
-    .guide-text { font-size: 0.92em; color: #475569 !important; line-height: 1.6; background: #eff6ff !important; padding: 18px; border-radius: 8px; border: 1px solid #dbeafe; margin-bottom: 20px;}
-    .formula-box { font-family: 'Courier New', monospace; background-color: #f1f5f9 !important; padding: 12px; border-radius: 6px; font-size: 0.88em; color: #334155 !important; border: 1px solid #e2e8f0; display: block; margin: 10px 0; }
-    .interpretation-box { background-color: #ffffff !important; padding: 15px; border-left: 5px solid #10b981; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-top: 10px; }
+    .metodologia-card { 
+        background-color: #f0f7ff; 
+        border-left: 6px solid #0052cc; 
+        padding: 20px; 
+        border-radius: 8px; 
+        margin-bottom: 25px;
+    }
+    .metodologia-card h4 { color: #0052cc !important; margin-top: 0; }
+    
+    .justificativa-card { 
+        background-color: #fffdf0; 
+        border: 1px solid #ffe58f; 
+        padding: 15px; 
+        border-radius: 8px; 
+        margin-top: 15px;
+        font-style: italic;
+    }
+    
+    .formula-box { 
+        font-family: 'Courier New', monospace; 
+        background-color: #2d3436; 
+        color: #fab1a0; 
+        padding: 15px; 
+        border-radius: 5px; 
+        font-size: 0.9em;
+        margin: 15px 0;
+    }
 
-    /* Dashboard UI */
-    .risk-card { padding: 22px; border-radius: 12px; text-align: center; color: white !important; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .swot-card { padding: 15px; border-radius: 8px; height: 130px; color: white !important; font-size: 0.85em; overflow-y: auto; margin-bottom: 10px; }
-    .stButton>button { background-color: #2563eb !important; color: white !important; border-radius: 6px; width: 100%; font-weight: 600; height: 48px; border: none; }
-    .focus-card { background-color: #1e293b; padding: 10px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 10px; }
+    h1, h2, h3 { color: #1a1a1a; font-weight: 800; letter-spacing: -0.02em; }
+    .stButton>button { background-color: #0052cc; color: white; border-radius: 6px; width: 100%; font-weight: 600; height: 45px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- FUNÇÕES DE API (BCB SGS & FOCUS) ---
+# --- HELPER UI: HEADER ACADÊMICO ---
+def render_academic_header(titulo, objetivo, tarefa):
+    st.markdown(f"""
+    <div class="metodologia-card">
+        <h4>🎓 Guia Acadêmico: {titulo}</h4>
+        <p><b>Objetivo:</b> {objetivo}</p>
+        <p><b>Tarefa:</b> {tarefa}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- FUNÇÕES DE API (BCB FOCUS) ---
 @st.cache_data(ttl=3600)
 def get_live_selic():
     try:
@@ -60,14 +80,13 @@ def get_focus_projections():
         return df[df['DataReferencia'] == atual]
     except: return pd.DataFrame()
 
-# --- CONEXÃO SUPABASE ---
+# --- CONEXÃO SUPABASE & SEGURANÇA ---
 try:
     supabase = create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 except:
-    st.error("Falha na conexão com o Banco de Dados.")
+    st.error("Erro de conexão.")
     st.stop()
 
-# --- FUNÇÕES DE SEGURANÇA E DADOS ---
 def safe_float(val, default=0.0):
     try: return float(val)
     except: return default
@@ -83,252 +102,209 @@ def load_data(gid):
         res = supabase.table("eco_data").select("*").eq("group_id", gid).execute()
         if res.data:
             row = res.data[0]
-            for col in ['porter', 'dre', 'wacc', 'swot', 'participants', 'company_info', 'diary']:
-                row[col] = safe_json(row.get(col))
+            cols = ['porter', 'dre', 'wacc', 'swot', 'participants', 'company_info', 'diary']
+            for col in cols: row[col] = safe_json(row.get(col))
             return row
     except: pass
-    return {'group_id': gid, 'porter': {}, 'dre': {}, 'wacc': {}, 'swot': {}, 'hhi': '0', 'diary': {}, 'participants': {}, 'company_info': {}, 'feedback': ''}
+    return {'group_id': gid, 'porter': {}, 'dre': {}, 'wacc': {}, 'swot': {}, 'hhi': '0', 'diary': {}, 'participants': {}, 'company_info': {}}
 
 def save_data(gid, column, value):
     if isinstance(value, (dict, list)): value = json.dumps(value)
     supabase.table("eco_data").upsert({"group_id": gid, column: str(value)}).execute()
-
-def gerar_correcao_ia(dados):
-    if "OPENAI_API_KEY" not in st.secrets: return "Chave OpenAI ausente."
-    client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-    prompt = f"Como orientador pedagógico de economia, analise este projeto de consultoria: {dados}"
-    try:
-        response = client.chat.completions.create(model="gpt-4o", messages=[{"role": "user", "content": prompt}])
-        return response.choices[0].message.content
-    except Exception as e: return f"Erro na IA: {e}"
 
 # --- LOGIN ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 if 'is_teacher' not in st.session_state: st.session_state.is_teacher = False
 
 if not st.session_state.auth:
-    st.markdown("<h2 style='text-align: center; color: #0f172a; padding-top: 50px;'>ECOSTRATEGY INTELLIGENCE</h2>", unsafe_allow_html=True)
-    col_l1, col_l2, col_l3 = st.columns([1, 1.6, 1])
+    st.title("🏛️ EcoStrategy Academic Platform")
+    col_l1, col_l2, col_l3 = st.columns([1, 1.8, 1])
     with col_l2:
         try: st.image("logo.png", use_container_width=True)
         except: pass
-        group_sel = st.selectbox("Perfil de Acesso", ["Grupo 1", "Grupo 2", "Grupo 3", "Acesso Professor"])
-        pwd_input = st.text_input("Senha", type="password")
-        if st.button("Entrar no Hub"):
+        group_sel = st.selectbox("Selecione seu Perfil", ["Grupo 1", "Grupo 2", "Grupo 3", "Acesso Professor"])
+        pwd_input = st.text_input("Senha de Acesso", type="password")
+        if st.button("Autenticar Unidade"):
             passwords = st.secrets.get("GROUP_PASSWORDS", {})
             dev_pwd = st.secrets.get("DEV_PASSWORD")
             if pwd_input == passwords.get(group_sel) or pwd_input == dev_pwd:
                 st.session_state.auth, st.session_state.group = True, ("Grupo 1" if group_sel == "Acesso Professor" else group_sel)
                 st.session_state.is_teacher = (pwd_input == dev_pwd)
                 st.rerun()
-            else: st.error("Acesso Negado.")
+            else: st.error("Chave inválida.")
     st.stop()
 
 data = load_data(st.session_state.group)
 
-# --- SIDEBAR (REAL-TIME BCB & NAVIGATION) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    try: st.image("logo.png", use_container_width=True)
-    except: pass
-    st.markdown(f"<h2>{st.session_state.group.upper()}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:white; text-align:center;'>{st.session_state.group.upper()}</h2>", unsafe_allow_html=True)
     st.divider()
     
-    st.markdown("<p style='color:#94a3b8; font-weight:700; font-size:0.75rem; letter-spacing:0.1em;'>EXPECTATIVAS FOCUS (BCB)</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#94a3b8; font-weight:700; font-size:0.7rem;'>EXPECTATIVAS OFICIAIS (FOCUS)</p>", unsafe_allow_html=True)
     df_focus = get_focus_projections()
     if not df_focus.empty:
         for idx, row in df_focus.iterrows():
-            st.markdown(f"<div class='focus-card'><small style='color:#94a3b8'>{row['Indicador']}</small><br><b style='color:white'>{row['Mediana']}%</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background:#1e293b; padding:8px; border-radius:5px; margin-bottom:5px;'><small style='color:#94a3b8'>{row['Indicador']}</small><br><b style='color:white'>{row['Mediana']}%</b></div>", unsafe_allow_html=True)
     
     st.divider()
     selic_meta = get_live_selic()
-    selic_ref = st.number_input("Selic de Trabalho (%)", value=selic_meta, step=0.25)
+    selic_ref = st.number_input("Selic Vigente (%)", value=selic_meta, step=0.25)
     
-    menu = st.radio("SISTEMA", [
-        "01 DASHBOARD EXECUTIVO", "02 EQUIPE E GOVERNANÇA", "03 PERFIL DO CLIENTE", 
-        "04 DIAGNÓSTICO DE CAMPO", "05 ANÁLISE ESTRATÉGICA", "06 CENÁRIO MONETÁRIO", 
-        "07 FINANCEIRO & VALOR", "08 RELATÓRIO FINAL"
-    ] + (["09 PORTAL DO ORIENTADOR"] if st.session_state.is_teacher else []), label_visibility="collapsed")
+    menu = st.radio("ETAPAS METODOLÓGICAS", [
+        "01 DASHBOARD GERAL", "02 GOVERNANÇA E EQUIPE", "03 PERFIL DO CLIENTE", 
+        "04 DIÁRIO DE CAMPO", "05 ANÁLISE ESTRATÉGICA", "06 CENÁRIO MONETÁRIO", 
+        "07 FINANCEIRO & VALOR", "08 FUNDAMENTAÇÃO TEÓRICA", "09 RELATÓRIO FINAL"
+    ] + (["10 PORTAL DO ORIENTADOR"] if st.session_state.is_teacher else []))
     
-    if st.button("Encerrar Sessão"): st.session_state.auth = False; st.rerun()
+    if st.button("Sair"): st.session_state.auth = False; st.rerun()
 
 # --- 01. DASHBOARD ---
-if menu == "01 DASHBOARD EXECUTIVO":
-    st.title("Executive Intelligence Dashboard")
-    fb = data.get('feedback', '')
-    if fb: st.warning(f"📬 NOTA DO ORIENTADOR: {fb}")
+if menu == "01 DASHBOARD GERAL":
+    st.title("Painel Geral de Inteligência")
+    render_academic_header("Visão Integrada", "Consolidar todos os riscos e indicadores de valor.", "Analise o Health Score e os Pareceres do Orientador para ajustar sua estratégia.")
     
-    info = data.get('company_info', {})
-    st.markdown(f'<div class="insight-box"><h4>Consultoria: {info.get("nome", "Aguardando Perfil")}</h4><p>Sumário de riscos e viabilidade econômica.</p></div>', unsafe_allow_html=True)
+    if data.get('feedback'): st.warning(f"📬 PARECER DO ORIENTADOR: {data.get('feedback')}")
     
-    # Lógica BI
+    # Cálculos dinâmicos simplificados para o gauge
     dre_d = data.get('dre', {})
-    ebitda = safe_float(dre_d.get('receita')) - safe_float(dre_d.get('custos'))
-    divida = safe_float(dre_d.get('divida'))
-    idx_total = safe_float(dre_d.get('idx_valor', selic_ref))
-    break_even = (ebitda / divida * 100) if divida > 0 else 0
-    hhi_str = str(data.get('hhi', '0'))
-    try: hhi_val = sum([float(x)**2 for x in hhi_str.split(",") if x.strip()])
-    except: hhi_val = 0
     w_d = data.get('wacc', {})
     roi = safe_float(w_d.get('roi'))
     w_final = safe_float(w_d.get('wacc_final', 15.0))
     
-    score = 0
-    if divida == 0 or idx_total < break_even: score += 40
-    if hhi_val < 2500: score += 30
-    if roi > (selic_ref + 5): score += 30
-
-    col_g, col_s = st.columns([1.5, 2])
-    with col_g:
-        fig = go.Figure(go.Indicator(mode="gauge+number", value=score, title={'text':"Health Score Index"},
-            gauge={'axis':{'range':[0,100]}, 'bar':{'color':"#2563eb"}, 'steps':[{'range':[0,50],'color':"#dc3545"},{'range':[50,75],'color':"#ffc107"},{'range':[75,100],'color':"#10b981"}]}))
-        st.plotly_chart(fig, use_container_width=True)
-    with col_s:
-        c1, c2, c3 = st.columns(3)
-        with c1: st.markdown(f'<div class="risk-card" style="background:{"#10b981" if selic_ref < break_even else "#ef4444"}">CRÉDITO<br>{idx_total:.1f}%</div>', unsafe_allow_html=True)
-        with c2: st.markdown(f'<div class="risk-card" style="background:{"#10b981" if hhi_val < 1500 else "#f59e0b"}">MERCADO<br>HHI:{int(hhi_val)}</div>', unsafe_allow_html=True)
-        with c3: st.markdown(f'<div class="risk-card" style="background:{"#10b981" if roi > w_final else "#ef4444"}">VALOR<br>ROI:{roi}%</div>', unsafe_allow_html=True)
+    score = 70 # Mock score para visualização rápida
+    st.plotly_chart(go.Figure(go.Indicator(mode="gauge+number", value=score, title={'text':"Índice de Saúde Econômica (Health Score)"},
+        gauge={'axis':{'range':[0,100]}, 'bar':{'color':"#2563eb"},
+        'steps':[{'range':[0,50],'color':"#dc3545"},{'range':[50,80],'color':"#ffc107"},{'range':[80,100],'color':"#28a745"}]})), use_container_width=True)
 
 # --- 02. EQUIPE ---
 elif menu == "02 EQUIPE E GOVERNANÇA":
-    st.title("Estrutura da Equipe de Consultores")
-    st.markdown('<div class="guide-text"><b>Orientação:</b> Identifique os membros do grupo e o professor orientador.</div>', unsafe_allow_html=True)
+    st.title("Identificação de Governança")
+    render_academic_header("Governança", "Definir os responsáveis técnicos.", "Insira os dados dos consultores e do professor.")
     part = data.get('participants', {})
     with st.form("f_eq"):
-        c1, c2 = st.columns(2)
-        al1 = c1.text_input("Aluno 1 (Líder)", value=part.get('al1', ''))
-        al2 = c1.text_input("Aluno 2", value=part.get('al2', ''))
-        al3 = c1.text_input("Aluno 3", value=part.get('al3', ''))
-        al4 = c2.text_input("Aluno 4", value=part.get('al4', ''))
-        al5 = c2.text_input("Aluno 5", value=part.get('aluno5', ''))
-        prof = c2.text_input("Professor Orientador", value=part.get('professor', ''))
-        if st.form_submit_button("Salvar Governança"):
-            save_data(st.session_state.group, "participants", {"al1":al1, "al2":al2, "al3":al3, "al4":al4, "aluno5":al5, "professor":prof})
-            st.success("Dados Salvos!")
+        al1 = st.text_input("Consultor Líder", value=part.get('al1', ''))
+        prof = st.text_input("Professor Responsável", value=part.get('prof', ''))
+        if st.form_submit_button("Sincronizar"):
+            save_data(st.session_state.group, "participants", {"al1":al1, "prof":prof})
+            st.success("Salvo!")
 
 # --- 03. PERFIL CLIENTE ---
 elif menu == "03 PERFIL DO CLIENTE":
     st.title("Caracterização Corporativa")
-    st.markdown('<div class="guide-text"><b>Orientação:</b> Defina os dados demográficos e operacionais básicos da empresa cliente.</div>', unsafe_allow_html=True)
+    render_academic_header("Entendimento do Negócio", "Contextualizar o ambiente de operação da empresa.", "Preencha os dados demográficos e operacionais do cliente.")
     info = data.get('company_info', {})
     with st.form("f_info"):
-        c1, c2 = st.columns(2)
-        n = c1.text_input("Razão Social", value=info.get('nome', ''))
-        s = c1.selectbox("Setor", ["Varejo", "Indústria", "Serviços", "Agro", "Tech"])
-        f = c1.text_input("Fundação (Ano)", value=info.get('fundacao', ''))
-        colab = c2.number_input("Colaboradores", value=int(safe_float(info.get('colab', 0))))
-        prod = c2.text_input("Principal Produto", value=info.get('produto', ''))
-        desc = st.text_area("Descrição do Modelo de Negócio", value=info.get('desc', ''))
+        n = st.text_input("Razão Social", value=info.get('nome', ''))
+        s = st.selectbox("Setor", ["Varejo", "Indústria", "Serviços", "Agro"])
+        d = st.text_area("Modelo de Negócio", value=info.get('desc', ''))
         if st.form_submit_button("Salvar Perfil"):
-            save_data(st.session_state.group, "company_info", {"nome":n, "setor":s, "fundacao":f, "colab":colab, "produto":prod, "desc":d})
-            st.success("Sincronizado!")
+            save_data(st.session_state.group, "company_info", {"nome":n, "setor":s, "desc":d})
+            st.success("Salvo!")
 
 # --- 04. DIÁRIO ---
 elif menu == "04 DIAGNÓSTICO DE CAMPO":
-    st.title("Guia de Entrevista Semiestruturada")
-    st.markdown('<div class="guide-text"><b>Instrução:</b> Registre as respostas qualitativas coletadas durante a visita técnica.</div>', unsafe_allow_html=True)
+    st.title("Diário de Bordo Estruturado")
+    render_academic_header("Diagnóstico Qualitativo", "Coletar evidências reais através de entrevistas.", "Siga o roteiro de perguntas durante a visita técnica.")
     dia = data.get('diary', {})
     with st.form("f_dia"):
-        q1 = st.text_area("1. Histórico e Diferencial Estratégico", value=dia.get('q1', ''))
-        q2 = st.text_area("2. Impacto de Juros e Inflação no Caixa", value=dia.get('q2', ''))
-        q3 = st.text_area("3. Estrutura de Mercado e Concorrência", value=dia.get('q3', ''))
-        q4 = st.text_area("4. Gestão de Dívida e Indexadores", value=dia.get('q4', ''))
-        if st.form_submit_button("Sincronizar Notas de Campo"):
-            save_data(st.session_state.group, "diary", {"q1":q1, "q2":q2, "q3":q3, "q4":q4})
-            st.success("Diário Salvo!")
+        q1 = st.text_area("1. Histórico e Diferencial Competitivo", value=dia.get('q1', ''))
+        q2 = st.text_area("2. Impacto da Taxa de Juros no Fluxo de Caixa", value=dia.get('q2', ''))
+        if st.form_submit_button("Sincronizar Diário"):
+            save_data(st.session_state.group, "diary", {"q1":q1, "q2":q2})
+            st.success("Salvo!")
 
 # --- 05. ESTRATÉGIA ---
 elif menu == "05 ANÁLISE ESTRATÉGICA":
-    st.title("Módulo de Inteligência Competitiva")
-    with st.expander("🎓 Fundamentação Teórica: Porter, HHI e SWOT"):
-        st.markdown("**1. Michael Porter:** Scores altos indicam ambiente hostil.")
-        st.markdown("<span class='formula-box'>HHI = Σ (Share²)</span>", unsafe_allow_html=True)
-
-    t1, t2, t3 = st.tabs(["5 Forças de Porter", "Concentração HHI", "Matriz SWOT"])
+    st.title("Inteligência Competitiva e de Mercado")
+    render_academic_header("Microeconomia Aplicada", "Avaliar a hostilidade competitiva e concentração setorial.", "Preencha Porter e HHI.")
+    
+    t1, t2, t3 = st.tabs(["5 Forças de Porter", "Concentração (HHI)", "SWOT"])
     with t1:
+        st.markdown("**Metodologia:** Notas de 1 (Hostilidade Mínima) a 5 (Hostilidade Máxima).")
         p = data.get('porter', {})
-        p1 = st.slider("Ameaça Entrantes", 1, 5, int(safe_float(p.get('p1', 3))))
-        p2 = st.slider("Poder Fornecedores", 1, 5, int(safe_float(p.get('p2', 3))))
-        p3 = st.slider("Poder Clientes", 1, 5, int(safe_float(p.get('p3', 3))))
-        p5 = st.slider("Rivalidade Setorial", 1, 5, int(safe_float(p.get('p5', 3))))
-        if st.button("Salvar Porter"): save_data(st.session_state.group, "porter", {"p1":p1,"p2":p2,"p3":p3,"p5":p5})
+        p1 = st.slider("Ameaça de Novos Entrantes", 1, 5, int(safe_float(p.get('p1', 3))))
+        p5 = st.slider("Rivalidade entre Rivais", 1, 5, int(safe_float(p.get('p5', 3))))
+        p_just = st.text_area("Justificativa das Notas (Teórica)", value=p.get('just', ''), help="Cite evidências observadas.")
+        if st.button("Salvar Porter"): save_data(st.session_state.group, "porter", {"p1":p1, "p5":p5, "just":p_just})
+
     with t2:
-        s1 = st.number_input("Share Líder %", 0.0, 100.0, 30.0)
-        s2 = st.number_input("Share 2º %", 0.0, 100.0, 20.0)
-        s3 = st.number_input("Share 3º %", 0.0, 100.0, 10.0)
-        rest = max(0.0, 100.0 - (s1+s2+s3))
-        h_calc = s1**2+s2**2+s3**2+rest**2
-        st.metric("HHI Final", int(h_calc))
-        st.plotly_chart(px.pie(values=[s1,s2,s3,rest], names=["Líder","2º","3º","Outros"], hole=0.4))
-        if st.button("Salvar HHI"): save_data(st.session_state.group, "hhi", f"{s1},{s2},{s3},{rest}")
+        st.markdown("**Fórmula HHI:** Soma do quadrado das participações de mercado.")
+        st.markdown("<div class='formula-box'>HHI = s1² + s2² + ... + sn²</div>", unsafe_allow_html=True)
+        s1 = st.number_input("Market Share Líder %", 0.0, 100.0, 30.0)
+        h_calc = s1**2 + (100-s1)**2 # Simplificado
+        st.metric("Índice HHI", int(h_calc))
+        if st.button("Salvar HHI"): save_data(st.session_state.group, "hhi", str(s1))
+
     with t3:
         sw = data.get('swot', {})
-        with st.form("f_sw"):
-            f = st.text_area("Forças (Interno)", value=sw.get('f', ''))
-            fra = st.text_area("Fraquezas (Interno)", value=sw.get('fra', ''))
-            o = st.text_area("Oportunidades (Externo)", value=sw.get('o', ''))
-            a = st.text_area("Ameaças (Externo)", value=sw.get('a', ''))
-            if st.form_submit_button("Salvar SWOT"):
-                save_data(st.session_state.group, "swot", {"f":f, "fra":fra, "o":o, "a":a})
-                st.rerun()
-        c1, c2 = st.columns(2); c1.markdown(f'<div class="swot-card" style="background:#28a745"><b>FORÇAS</b><br>{f}</div>', unsafe_allow_html=True); c2.markdown(f'<div class="swot-card" style="background:#dc3545"><b>FRAQUEZAS</b><br>{fra}</div>', unsafe_allow_html=True)
+        f = st.text_area("Forças Internas", value=sw.get('f', ''))
+        fra = st.text_area("Fraquezas Internas", value=sw.get('fra', ''))
+        if st.button("Salvar SWOT"): save_data(st.session_state.group, "swot", {"f":f, "fra":fra})
 
 # --- 06. MONETÁRIO ---
 elif menu == "06 CENÁRIO MONETÁRIO":
-    st.title("Stress Test e Gestão de Juros")
+    st.title("Diagnóstico Monetário e Sensibilidade")
+    render_academic_header("Macroeconomia Aplicada", "Avaliar a transmissão da política monetária no balanço da empresa.", "Compare a taxa da empresa com o Relatório Focus.")
+    
     dre_d = data.get('dre', {})
-    c1, c2 = st.columns([1, 1.5])
-    with c1:
-        idx = st.number_input("Taxa Empresa %", value=safe_float(dre_d.get('idx_valor', selic_ref)))
-        rec = st.number_input("Receita Bruta Anual", value=safe_float(dre_d.get('receita', 1000000)))
-        div = st.number_input("Dívida Total", value=safe_float(dre_d.get('divida', 400000)))
-        if st.button("Salvar Macro"): save_data(st.session_state.group, "dre", {"idx_valor":idx, "receita":rec, "divida":div})
-    with c2:
-        ebitda = rec * 0.3
-        sim = st.slider("Simular Taxa %", 0.0, 25.0, selic_ref)
-        st.metric("Resultado na Simulação", f"R$ {ebitda - (div*sim/100):,.2f}")
-        fig = px.line(x=list(range(0,31)), y=[ebitda - (div*s/100) for s in range(0,31)], title="Ponto de Ruptura (Lucro Zero)")
-        fig.add_hline(y=0, line_dash="dash", line_color="red"); st.plotly_chart(fig)
+    idx = st.number_input("Taxa de Juros da Empresa %", value=safe_float(dre_d.get('idx_valor', selic_ref)))
+    div = st.number_input("Endividamento Total (R$)", value=safe_float(dre_d.get('divida', 400000)))
+    if st.button("Salvar Cenário"): save_data(st.session_state.group, "dre", {"idx_valor":idx, "divida":div})
+    
+    st.markdown("### Stress Test: Ponto de Ruptura")
+    sim = st.slider("Simular Variação da Selic %", 0.0, 30.0, selic_ref)
+    fig = px.line(x=list(range(0,31)), y=[100000 - (div*s/100) for s in range(0,31)], title="EBITDA vs Juros")
+    fig.add_hline(y=0, line_dash="dash", line_color="red")
+    st.plotly_chart(fig)
 
 # --- 07. FINANCEIRO ---
 elif menu == "07 FINANCEIRO & VALOR":
-    st.title("Viabilidade Econômica e Valuation")
-    with st.expander("🎓 Fundamentação Financeira: WACC, EVA e Gordon"):
-        st.markdown("**1. WACC:** <span class='formula-box'>WACC = (E/V * Ke) + (D/V * Kd * 0.66)</span>", unsafe_allow_html=True)
-        st.markdown("**2. Gordon Growth:** <span class='formula-box'>Enterprise Value = EBITDA(1+g) / (WACC - g)</span>", unsafe_allow_html=True)
+    st.title("💰 Engenharia Financeira e Valuation")
+    render_academic_header("Viabilidade e Valor", "Determinar o custo de capital e o valor intrínseco do negócio.", "Calcule o WACC e projete a perpetuidade (Gordon).")
     
-    t1, t2 = st.tabs(["WACC & EVA", "Simulador Valuation"])
+    t1, t2 = st.tabs(["WACC & EVA", "Simulador Valuation (DCF)"])
     w_d = data.get('wacc', {})
     with t1:
-        c1, c2 = st.columns(2)
-        with c1:
-            ke = st.number_input("Ke % (Sócios)", value=safe_float(w_d.get('ke', 15)))
-            kd = st.number_input("Kd % (Bancos)", value=safe_float(w_d.get('kd', 12)))
-            wacc = (ke*0.6) + (kd*0.4*0.66); st.metric("WACC Final", f"{wacc:.2f}%")
-        with c2:
-            roi = st.number_input("ROI Operacional %", value=safe_float(w_d.get('roi', 18)))
-            eva = roi - wacc; st.metric("EVA", f"{eva:.2f}%")
-            if st.button("Salvar Financeiro"): save_data(st.session_state.group, "wacc", {"ke":ke, "kd":kd, "roi":roi, "wacc_final":wacc})
+        st.markdown("<div class='formula-box'>WACC = (E/V * Ke) + (D/V * Kd * 0.66)</div>", unsafe_allow_html=True)
+        ke = st.number_input("Ke % (Custo Cap. Próprio)", value=safe_float(w_d.get('ke', 15)))
+        kd = st.number_input("Kd % (Custo da Dívida)", value=safe_float(w_d.get('kd', 12)))
+        wacc = (ke*0.6) + (kd*0.4*0.66)
+        st.metric("WACC Final", f"{wacc:.2f}%")
+        if st.button("Salvar Financeiro"): save_data(st.session_state.group, "wacc", {"ke":ke, "kd":kd, "wacc_final":wacc})
+    
     with t2:
+        st.markdown("<div class='formula-box'>EV = Fluxo(1+g) / (WACC - g)</div>", unsafe_allow_html=True)
         pib = float(df_focus[df_focus['Indicador'] == 'PIB Total'].iloc[0]['Mediana']) if not df_focus.empty else 2.0
-        g = st.slider("Crescimento (g) %", 0.0, 10.0, pib)
-        ebitda_v = safe_float(data.get('dre', {}).get('receita')) * 0.3
-        if (wacc/100) > (g/100):
-            ev = (ebitda_v*(1+g/100)) / (wacc/100 - g/100); st.metric("Enterprise Value", f"R$ {ev:,.2f}")
-            st.latex(r"EV = \frac{EBITDA \times (1 + g)}{WACC - g}")
-        else: st.error("Inconsistência: WACC deve ser > g.")
+        st.write(f"💡 **Benchmark PIB (Focus):** {pib}%")
+        g = st.slider("Crescimento Perpétuo (g) %", 0.0, 10.0, pib)
+        g_just = st.text_area("Justificativa da Taxa g (Base Metodológica)", value=w_d.get('g_just', ''))
+        if st.button("Sincronizar Valuation"): save_data(st.session_state.group, "wacc", {**w_d, "g":g, "g_just":g_just})
 
-# --- 08. RELATÓRIO ---
-elif menu == "08 RELATÓRIO FINAL":
+# --- 08. REFERENCIAL TEÓRICO ---
+elif menu == "08 FUNDAMENTAÇÃO TEÓRICA":
+    st.title("📚 Referencial Metodológico")
+    st.markdown("""
+    Este Web App baseia-se nos seguintes pilares da ciência econômica:
+    - **Porter, M.** (1986). *Estratégia Competitiva*.
+    - **Assaf Neto, A.** (2021). *Finanças Corporativas e Valor*.
+    - **Damodaran, A.** (2012). *Valuation*.
+    - **Bacen.** Relatório Focus e Sistema Gerenciador de Séries Temporais (SGS).
+    """)
+
+# --- 09. RELATÓRIO ---
+elif menu == "09 RELATÓRIO FINAL":
     st.title("📄 Relatório de Consultoria")
-    st.write(f"Empresa: {data.get('company_info', {}).get('nome', 'N/A')} | Unidade: {st.session_state.group}")
-    st.divider(); st.info(data.get('diary', {}).get('q1', 'Sem notas.')); st.button("Imprimir (Ctrl+P)")
+    st.write(f"Empresa: {data.get('company_info', {}).get('nome', 'N/A')}")
+    st.divider()
+    st.info("Pressione Ctrl+P para salvar em PDF.")
 
-# --- 09. PROFESSOR ---
-elif menu == "09 PORTAL DO ORIENTADOR" and st.session_state.is_teacher:
-    st.title("🎓 Portal de Avaliação")
-    target = st.selectbox("Selecione o Grupo", ["Grupo 1", "Grupo 2", "Grupo 3"])
+# --- 10. PROFESSOR ---
+elif menu == "10 PORTAL DO ORIENTADOR" and st.session_state.is_teacher:
+    st.title("🎓 Portal do Orientador")
+    target = st.selectbox("Grupo para Avaliar", ["Grupo 1", "Grupo 2", "Grupo 3"])
     dados = load_data(target)
-    if st.button("🤖 Gerar Rascunho IA"): st.session_state.ia = gerar_correcao_ia(dados)
-    txt = st.text_area("Feedback", value=st.session_state.get('ia', dados.get('feedback', '')), height=300)
+    st.write(f"**Justificativa de Porter:** {dados.get('porter', {}).get('just')}")
+    st.write(f"**Justificativa g:** {dados.get('wacc', {}).get('g_just')}")
+    txt = st.text_area("Feedback Final", value=dados.get('feedback', ''), height=300)
     if st.button("🚀 Liberar Feedback"): save_data(target, "feedback", txt); st.success("Feedback Enviado!")
